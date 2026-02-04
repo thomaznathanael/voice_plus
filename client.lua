@@ -6,7 +6,6 @@ addEvent("voice_local:setVoiceMode", true)
 addEvent("voice_local:requestBroadcastRefresh", true)
 addEvent("voice_local:playRadioRoger", true)
 addEvent("voice_local:playRadioRogerNearby", true)
-addEvent("voice_local:radioTxState", true)
 
 -- Only starts handling player voices after receiving the settings from the server
 local initialWaiting = true
@@ -17,7 +16,6 @@ local voiceMode = "general"
 local voicePartner = nil
 local radioType = nil
 local radioFreq = nil
-local radioTxActive = false
 
 local sx, sy = guiGetScreenSize()
 
@@ -109,14 +107,6 @@ local function computeDistanceVolume(distance, maxDistance)
     return (1.0 - (distance / maxDistance)^2)
 end
 
-local function setRadioTxState(state)
-    if voiceMode ~= "radio" then
-        return
-    end
-    radioTxActive = state == true
-    triggerServerEvent("voice_local:setRadioTx", localPlayer, radioTxActive)
-end
-
 addEventHandler("onClientResourceStart", resourceRoot, function()
     for _, player in pairs(getElementsByType("player", root, true)) do
         if player ~= localPlayer and streamedPlayers[player] == nil then
@@ -125,10 +115,6 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
         end
     end
     triggerServerEvent("voice_local:setPlayerBroadcast", localPlayer, streamedPlayers)
-
-    bindKey("backslash", "down", function()
-        setRadioTxState(not radioTxActive)
-    end)
 end, false)
 
 -- Handle remote/other player quit
@@ -200,10 +186,6 @@ addEventHandler("voice_local:updateSettings", localPlayer, function(settingsFrom
     end
 end, false)
 
-addEventHandler("onClientResourceStop", resourceRoot, function()
-    unbindKey("backslash", "down")
-end)
-
 addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner, freq)
     voiceMode = mode or "general"
     voicePartner = (isElement(partner) and getElementType(partner) == "player") and partner or nil
@@ -214,8 +196,6 @@ addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner,
     elseif voiceMode ~= "radio" then
         radioType = nil
         radioFreq = nil
-        radioTxActive = false
-        setRadioTxState(false)
     end
 
     if (voiceMode == "call" or voiceMode == "private") and voicePartner then
