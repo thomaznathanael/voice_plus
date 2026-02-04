@@ -21,7 +21,7 @@ local sx, sy = guiGetScreenSize()
 
 local devSX, devSY = sx / 1920, sy / 1080
 local talkRingTexture = dxCreateTexture("ring.png", "dxt5", true, "clamp")
-local talkRingSize = 0.9
+local talkRingSize = 0.6
 local talkRingColor = tocolor(255, 255, 255, 220)
 
 local function drawTalkRing(player)
