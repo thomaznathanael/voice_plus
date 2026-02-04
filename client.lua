@@ -16,6 +16,7 @@ local voiceMode = "general"
 local voicePartner = nil
 local radioType = nil
 local radioFreq = nil
+local radioTxActive = false
 
 local sx, sy = guiGetScreenSize()
 
@@ -107,6 +108,14 @@ local function computeDistanceVolume(distance, maxDistance)
     return (1.0 - (distance / maxDistance)^2)
 end
 
+local function setRadioTxState(state)
+    if voiceMode ~= "radio" or not radioType or not radioFreq then
+        return
+    end
+    radioTxActive = state == true
+    triggerServerEvent("voice_local:setRadioTx", localPlayer, radioTxActive)
+end
+
 addEventHandler("onClientResourceStart", resourceRoot, function()
     for _, player in pairs(getElementsByType("player", root, true)) do
         if player ~= localPlayer and streamedPlayers[player] == nil then
@@ -115,6 +124,10 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
         end
     end
     triggerServerEvent("voice_local:setPlayerBroadcast", localPlayer, streamedPlayers)
+
+    bindKey("backslash", "down", function()
+        setRadioTxState(not radioTxActive)
+    end)
 end, false)
 
 -- Handle remote/other player quit
@@ -196,6 +209,8 @@ addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner,
     elseif voiceMode ~= "radio" then
         radioType = nil
         radioFreq = nil
+        radioTxActive = false
+        setRadioTxState(false)
     end
 
     if (voiceMode == "call" or voiceMode == "private") and voicePartner then
@@ -205,6 +220,10 @@ addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner,
         setSoundVolume(voicePartner, settings.voiceSoundBoost.value or 1.0)
     end
 end, false)
+
+addEventHandler("onClientResourceStop", resourceRoot, function()
+    unbindKey("backslash", "down")
+end)
 
 addEventHandler("voice_local:requestBroadcastRefresh", localPlayer, function()
     triggerServerEvent("voice_local:setPlayerBroadcast", localPlayer, streamedPlayers)
