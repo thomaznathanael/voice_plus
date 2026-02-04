@@ -359,8 +359,10 @@ updateRadioChannel = function(freq, rType)
 
     for _, member in ipairs(list) do
         if not callPartners[member] and not playerPrivateChannel[member] then
-            broadcasts[member] = list
-            setPlayerVoiceBroadcastTo(member, list)
+            local base = generalBroadcasts[member] or {member}
+            local combined = mergeUnique(base, list)
+            broadcasts[member] = combined
+            setPlayerVoiceBroadcastTo(member, combined)
             triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", rType, freq)
         end
     end
