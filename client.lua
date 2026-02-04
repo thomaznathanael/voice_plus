@@ -125,7 +125,7 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
     end
     triggerServerEvent("voice_local:setPlayerBroadcast", localPlayer, streamedPlayers)
 
-    bindKey("backslash", "down", function()
+    bindKey("f2", "down", function()
         setRadioTxState(not radioTxActive)
     end)
 end, false)
@@ -222,7 +222,7 @@ addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner,
 end, false)
 
 addEventHandler("onClientResourceStop", resourceRoot, function()
-    unbindKey("backslash", "down")
+    unbindKey("f2", "down")
 end)
 
 addEventHandler("voice_local:requestBroadcastRefresh", localPlayer, function()
