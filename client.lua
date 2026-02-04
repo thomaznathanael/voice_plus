@@ -28,7 +28,6 @@ local iconTexture = dxCreateTexture("icon.png", "dxt5", true, "clamp")
 local talkEllipseColor = tocolor(0, 255, 0, 160)
 local talkEllipseRadiusX = 0.4
 local talkEllipseRadiusY = 0.4
-local talkEllipseSegments = 120
 
 local function drawTalkingIcon(player, camDistToPlayer)
     local boneX, boneY, boneZ = getPedBonePosition(player, 8)
@@ -48,16 +47,7 @@ end
 local function drawTalkEllipse(player)
     local px, py, pz = getElementPosition(player)
     local z = pz - 0.98
-    local step = (math.pi * 2) / talkEllipseSegments
-    local prevX = px + math.cos(0) * talkEllipseRadiusX
-    local prevY = py + math.sin(0) * talkEllipseRadiusY
-    for i = 1, talkEllipseSegments do
-        local angle = step * i
-        local x = px + math.cos(angle) * talkEllipseRadiusX
-        local y = py + math.sin(angle) * talkEllipseRadiusY
-        dxDrawLine3D(prevX, prevY, z, x, y, z, talkEllipseColor, 8)
-        prevX, prevY = x, y
-    end
+    dxDrawCircle3D(px, py, z, talkEllipseRadiusX, 0, 360, talkEllipseColor, 8)
 end
 
 local function handlePreRender()
