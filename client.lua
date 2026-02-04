@@ -26,9 +26,9 @@ local iconHeight = 180 * devSY
 local iconHalfHeight = iconHeight / 2
 local iconTexture = dxCreateTexture("icon.png", "dxt5", true, "clamp")
 local talkEllipseColor = tocolor(0, 255, 0, 160)
-local talkEllipseRadiusX = 0.5
-local talkEllipseRadiusY = 0.5
-local talkEllipseSegments = 36
+local talkEllipseRadiusX = 0.4
+local talkEllipseRadiusY = 0.4
+local talkEllipseSegments = 64
 
 local function drawTalkingIcon(player, camDistToPlayer)
     local boneX, boneY, boneZ = getPedBonePosition(player, 8)
@@ -55,7 +55,7 @@ local function drawTalkEllipse(player)
         local angle = step * i
         local x = px + math.cos(angle) * talkEllipseRadiusX
         local y = py + math.sin(angle) * talkEllipseRadiusY
-        dxDrawLine3D(prevX, prevY, z, x, y, z, talkEllipseColor, 6)
+        dxDrawLine3D(prevX, prevY, z, x, y, z, talkEllipseColor, 8)
         prevX, prevY = x, y
     end
 end
