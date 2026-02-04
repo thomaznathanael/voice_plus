@@ -6,6 +6,7 @@ addEvent("voice_local:requestPrivateLeave", true)
 addEvent("voice_local:playRadioRoger", true)
 
 local broadcasts = {}
+local generalBroadcasts = {}
 local privateChannels = {}
 local playerPrivateChannel = {}
 local radioChannels = {}
@@ -34,6 +35,7 @@ end)
 
 addEventHandler("onPlayerQuit", root, function()
     broadcasts[source] = nil
+    generalBroadcasts[source] = nil
 
     local callPartner = callPartners[source]
     if callPartner then
@@ -98,36 +100,6 @@ local function canPlayerBeWithinOtherPlayerStreamDistance(player, otherPlayer)
     return getDistanceBetweenPoints3D(px, py, pz, opx, opy, opz) <= maxDist
 end
 
-local function areInSameRadio(player, otherPlayer)
-    local freq = playerRadioFreq[player]
-    local rType = playerRadioType[player]
-    return freq and rType and playerRadioFreq[otherPlayer] == freq and playerRadioType[otherPlayer] == rType
-end
-
-local function shouldBlockRadioBroadcast(speaker, listener)
-    if not (isElement(speaker) and isElement(listener)) then
-        return false
-    end
-
-    if callPartners[speaker] == listener or callPartners[listener] == speaker then
-        return false
-    end
-
-    if playerPrivateChannel[speaker] and playerPrivateChannel[speaker] == playerPrivateChannel[listener] then
-        return false
-    end
-
-    local speakerFreq = playerRadioFreq[speaker]
-    local speakerType = playerRadioType[speaker]
-    local listenerFreq = playerRadioFreq[listener]
-    local listenerType = playerRadioType[listener]
-    if speakerFreq or listenerFreq then
-        return not (speakerFreq and listenerFreq and speakerType and listenerType and speakerFreq == listenerFreq and speakerType == listenerType)
-    end
-
-    return false
-end
-
 local function updateBroadcastForPrivate(player)
     local channelId = playerPrivateChannel[player]
     if not channelId then
@@ -144,44 +116,22 @@ local function updateBroadcastForPrivate(player)
     return true
 end
 
-local function removePlayerFromOtherBroadcasts(player)
-    for speaker, list in pairs(broadcasts) do
-        if speaker ~= player and type(list) == "table" and shouldBlockRadioBroadcast(speaker, player) then
-            local removed = false
-            for i = #list, 1, -1 do
-                if list[i] == player then
-                    table.remove(list, i)
-                    removed = true
-                end
-            end
-            if removed then
-                setPlayerVoiceBroadcastTo(speaker, list)
-            end
+local function mergeUnique(listA, listB)
+    local set = {}
+    local merged = {}
+    for _, player in ipairs(listA or {}) do
+        if isElement(player) and not set[player] then
+            set[player] = true
+            table.insert(merged, player)
         end
     end
-end
-
-local function addPlayerToNearbyBroadcasts(player)
-    for _, speaker in ipairs(getElementsByType("player")) do
-        if speaker ~= player
-        and canPlayerBeWithinOtherPlayerStreamDistance(speaker, player)
-        and not shouldBlockRadioBroadcast(speaker, player) then
-            if not broadcasts[speaker] then
-                broadcasts[speaker] = {speaker}
-            end
-            local exists = false
-            for _, member in pairs(broadcasts[speaker]) do
-                if member == player then
-                    exists = true
-                    break
-                end
-            end
-            if not exists then
-                table.insert(broadcasts[speaker], player)
-                setPlayerVoiceBroadcastTo(speaker, broadcasts[speaker])
-            end
+    for _, player in ipairs(listB or {}) do
+        if isElement(player) and not set[player] then
+            set[player] = true
+            table.insert(merged, player)
         end
     end
+    return merged
 end
 
 local function getRadioMembersList(freq, rType)
@@ -210,8 +160,10 @@ local function updateBroadcastForRadio(player)
     if not list then
         return false
     end
-    broadcasts[player] = list
-    setPlayerVoiceBroadcastTo(player, list)
+    local base = generalBroadcasts[player] or {player}
+    local combined = mergeUnique(base, list)
+    broadcasts[player] = combined
+    setPlayerVoiceBroadcastTo(player, combined)
     return true
 end
 
@@ -220,9 +172,10 @@ local function updateBroadcastForCall(player)
     if not partner then
         return false
     end
-    local list = {player, partner}
-    broadcasts[player] = list
-    setPlayerVoiceBroadcastTo(player, list)
+    local base = generalBroadcasts[player] or {player}
+    local combined = mergeUnique(base, {player, partner})
+    broadcasts[player] = combined
+    setPlayerVoiceBroadcastTo(player, combined)
     return true
 end
 
@@ -255,39 +208,30 @@ addEventHandler("voice_local:setPlayerBroadcast", root, function(players)
         return
     end
 
-    broadcasts[client] = {client}
+    generalBroadcasts[client] = {client}
 
     for player, _ in pairs(players) do
         if player ~= client then
-            if shouldBlockRadioBroadcast(client, player) then
-                iprint(eventName, "ignoring (radio)", getPlayerName(player))
+            if canPlayerBeWithinOtherPlayerStreamDistance(client, player) then
+                table.insert(generalBroadcasts[client], player)
             else
-                if canPlayerBeWithinOtherPlayerStreamDistance(client, player) then
-                    table.insert(broadcasts[client], player)
-                else
-                    iprint(eventName, "ignoring", getPlayerName(player))
-                end
+                iprint(eventName, "ignoring", getPlayerName(player))
             end
         end
     end
-    setPlayerVoiceBroadcastTo(client, broadcasts[client])
+
+    if not updateBroadcastForVoice(client) then
+        broadcasts[client] = generalBroadcasts[client]
+        setPlayerVoiceBroadcastTo(client, broadcasts[client])
+    end
 end)
 
 addEventHandler("voice_local:addToPlayerBroadcast", root, function(player)
     if not client then return end
     if not (isElement(player) and getElementType(player) == "player") then return end
 
-    if updateBroadcastForVoice(client) then
-        return
-    end
-
-    if not broadcasts[client] then
-        broadcasts[client] = {client}
-    end
-
-    if shouldBlockRadioBroadcast(client, player) then
-        iprint(eventName, "ignoring (radio)", getPlayerName(player))
-        return
+    if not generalBroadcasts[client] then
+        generalBroadcasts[client] = {client}
     end
 
     if not canPlayerBeWithinOtherPlayerStreamDistance(client, player) then
@@ -296,36 +240,38 @@ addEventHandler("voice_local:addToPlayerBroadcast", root, function(player)
     end
 
     -- Prevent duplicates
-    for _, broadcast in pairs(broadcasts[client]) do
+    for _, broadcast in pairs(generalBroadcasts[client]) do
         if player == broadcast then
             return
         end
     end
 
-    table.insert(broadcasts[client], player)
-    setPlayerVoiceBroadcastTo(client, broadcasts[client])
+    table.insert(generalBroadcasts[client], player)
+    if not updateBroadcastForVoice(client) then
+        broadcasts[client] = generalBroadcasts[client]
+        setPlayerVoiceBroadcastTo(client, broadcasts[client])
+    end
 end)
 
 addEventHandler("voice_local:removeFromPlayerBroadcast", root, function(player)
     if not client then return end
     if not (isElement(player) and getElementType(player) == "player") then return end
 
-    if updateBroadcastForVoice(client) then
+    if not generalBroadcasts[client] then
         return
     end
 
-    if not broadcasts[client] then
-        return
-    end
-
-    for i, broadcast in pairs(broadcasts[client]) do
+    for i, broadcast in pairs(generalBroadcasts[client]) do
         if player~=client and player == broadcast then
-            table.remove(broadcasts[client], i)
+            table.remove(generalBroadcasts[client], i)
             break
         end
     end
 
-    setPlayerVoiceBroadcastTo(client, broadcasts[client])
+    if not updateBroadcastForVoice(client) then
+        broadcasts[client] = generalBroadcasts[client]
+        setPlayerVoiceBroadcastTo(client, broadcasts[client])
+    end
 end)
 
 local function findPlayerByCharId(charIdRaw)
@@ -449,7 +395,6 @@ local function joinRadio(player, freq, rType)
     playerRadioType[player] = rType
 
     updateRadioChannel(freq, rType)
-    removePlayerFromOtherBroadcasts(player)
 
     outputChatBox(("Você entrou na %s %d."):format(rType, freq), player, 120, 255, 120)
 end
@@ -476,7 +421,6 @@ local function leaveRadio(player)
 
     if not callPartners[player] and not playerPrivateChannel[player] then
         resetPlayerToGeneral(player)
-        addPlayerToNearbyBroadcasts(player)
     end
 
     outputChatBox("Você saiu da frequência.", player, 255, 120, 120)
