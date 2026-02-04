@@ -251,15 +251,14 @@ addEventHandler("voice_local:setPlayerBroadcast", root, function(players)
         if player ~= client then
             if shouldBlockRadioBroadcast(client, player) then
                 iprint(eventName, "ignoring (radio)", getPlayerName(player))
-                goto continue_set_broadcast
-            end
-            if canPlayerBeWithinOtherPlayerStreamDistance(client, player) then
-                table.insert(broadcasts[client], player)
             else
-                iprint(eventName, "ignoring", getPlayerName(player))
+                if canPlayerBeWithinOtherPlayerStreamDistance(client, player) then
+                    table.insert(broadcasts[client], player)
+                else
+                    iprint(eventName, "ignoring", getPlayerName(player))
+                end
             end
         end
-        ::continue_set_broadcast::
     end
     setPlayerVoiceBroadcastTo(client, broadcasts[client])
 end)
