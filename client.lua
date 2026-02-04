@@ -25,9 +25,11 @@ local iconHalfWidth = iconWidth / 2
 local iconHeight = 180 * devSY
 local iconHalfHeight = iconHeight / 2
 local iconTexture = dxCreateTexture("icon.png", "dxt5", true, "clamp")
-local talkMarker = nil
-local talkMarkerSize = 0.6
-local talkMarkerColor = {0, 255, 0, 160}
+local talkEllipseColor = tocolor(0, 255, 0, 160)
+local talkEllipseRadiusX = 0.4
+local talkEllipseRadiusY = 0.4
+local talkEllipseSegments = 64
+local talkEllipseLineWidth = 8
 
 local function drawTalkingIcon(player, camDistToPlayer)
     local boneX, boneY, boneZ = getPedBonePosition(player, 8)
@@ -44,23 +46,20 @@ local function drawTalkingIcon(player, camDistToPlayer)
     end
 end
 
-local function ensureTalkMarker()
-    if isElement(talkMarker) then
-        return
+local function drawTalkEllipse(player, angleOffset)
+    local px, py, pz = getElementPosition(player)
+    local z = pz - 0.98
+    local step = (math.pi * 2) / talkEllipseSegments
+    local prevAngle = angleOffset or 0
+    local prevX = px + math.cos(prevAngle) * talkEllipseRadiusX
+    local prevY = py + math.sin(prevAngle) * talkEllipseRadiusY
+    for i = 1, talkEllipseSegments do
+        local angle = (step * i) + (angleOffset or 0)
+        local x = px + math.cos(angle) * talkEllipseRadiusX
+        local y = py + math.sin(angle) * talkEllipseRadiusY
+        dxDrawLine3D(prevX, prevY, z, x, y, z, talkEllipseColor, talkEllipseLineWidth)
+        prevX, prevY = x, y
     end
-    local px, py, pz = getElementPosition(localPlayer)
-    talkMarker = createMarker(px, py, pz - 1.0, "ring", talkMarkerSize, talkMarkerColor[1], talkMarkerColor[2], talkMarkerColor[3], talkMarkerColor[4])
-    if isElement(talkMarker) then
-        setElementInterior(talkMarker, getElementInterior(localPlayer))
-        setElementDimension(talkMarker, getElementDimension(localPlayer))
-    end
-end
-
-local function removeTalkMarker()
-    if isElement(talkMarker) then
-        destroyElement(talkMarker)
-    end
-    talkMarker = nil
 end
 
 local function handlePreRender()
@@ -121,14 +120,8 @@ local function handlePreRender()
         drawTalkingIcon(localPlayer, getDistanceBetweenPoints3D(cameraX, cameraY, cameraZ, localPlayerX, localPlayerY, localPlayerZ))
     end
     if localPlayerTalking then
-        ensureTalkMarker()
-        if isElement(talkMarker) then
-            setElementPosition(talkMarker, localPlayerX, localPlayerY, localPlayerZ - 1.0)
-            setElementInterior(talkMarker, getElementInterior(localPlayer))
-            setElementDimension(talkMarker, getElementDimension(localPlayer))
-        end
-    else
-        removeTalkMarker()
+        drawTalkEllipse(localPlayer, 0)
+        drawTalkEllipse(localPlayer, math.pi / talkEllipseSegments)
     end
 end
 
