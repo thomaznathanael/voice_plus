@@ -17,4 +17,12 @@
 	<script src="shared.lua" type="shared"/>
 	<script src="client.lua" type="client"/>
 	<script src="server.lua" type="server"/>
+
+	<export function="voice_plus_call" type="server"/>
+	<export function="voice_plus_hangup" type="server"/>
+	<export function="voice_plus_radio" type="server"/>
+	<export function="voice_plus_radio_off" type="server"/>
+	<export function="voice_plus_set_radio_tx" type="server"/>
+	<export function="voice_plus_private" type="server"/>
+	<export function="voice_plus_private_off" type="server"/>
 </meta>

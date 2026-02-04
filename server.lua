@@ -6,6 +6,13 @@ addEvent("voice_local:requestPrivateLeave", true)
 addEvent("voice_local:playRadioRoger", true)
 addEvent("voice_local:playRadioRogerNearby", true)
 addEvent("voice_local:setRadioTx", true)
+addEvent("voice_plus:call", true)
+addEvent("voice_plus:hangup", true)
+addEvent("voice_plus:radio", true)
+addEvent("voice_plus:radio_off", true)
+addEvent("voice_plus:set_radio_tx", true)
+addEvent("voice_plus:private", true)
+addEvent("voice_plus:private_off", true)
 
 local broadcasts = {}
 local generalBroadcasts = {}
@@ -30,6 +37,34 @@ addEventHandler("onPlayerResourceStart", root, function(res)
         triggerClientEvent(source, "voice_local:updateSettings", source, settings)
     end
 end)
+
+function voice_plus_call(player, targetCharId)
+    return exportCall(player, targetCharId)
+end
+
+function voice_plus_hangup(player)
+    return exportHangup(player)
+end
+
+function voice_plus_radio(player, radioType, freq)
+    return exportRadio(player, radioType, freq)
+end
+
+function voice_plus_radio_off(player)
+    return exportRadioOff(player)
+end
+
+function voice_plus_set_radio_tx(player, isTransmitting)
+    return exportSetRadioTx(player, isTransmitting)
+end
+
+function voice_plus_private(player, targetCharId, channelIdRaw)
+    return exportPrivate(player, targetCharId, channelIdRaw)
+end
+
+function voice_plus_private_off(player)
+    return exportPrivateOff(player)
+end
 
 -- Don't let the player talk to anyone as soon as they join
 addEventHandler("onPlayerJoin", root, function()
@@ -354,27 +389,39 @@ addEventHandler("voice_local:requestPrivateLeave", root, function()
     leavePrivateChannel(client)
 end)
 
+local function handleSetRadioTx(player, isTransmitting)
+    if not (isElement(player) and getElementType(player) == "player") then
+        return
+    end
+    if not playerRadioFreq[player] or not playerRadioType[player] then
+        playerRadioTx[player] = false
+        setElementData(player, "voice:radioTx", false, true)
+        return
+    end
+    if callPartners[player] or playerPrivateChannel[player] then
+        playerRadioTx[player] = false
+        setElementData(player, "voice:radioTx", false, true)
+        return
+    end
+
+    playerRadioTx[player] = (isTransmitting == true)
+    setElementData(player, "voice:radioTx", playerRadioTx[player], true)
+
+    if not updateBroadcastForVoice(player) then
+        local base = generalBroadcasts[player] or {player}
+        broadcasts[player] = base
+        setPlayerVoiceBroadcastTo(player, base)
+    end
+end
+
 addEventHandler("voice_local:setRadioTx", root, function(isTransmitting)
     if not client then return end
-    if not playerRadioFreq[client] or not playerRadioType[client] then
-        playerRadioTx[client] = false
-        setElementData(client, "voice:radioTx", false, true)
-        return
-    end
-    if callPartners[client] or playerPrivateChannel[client] then
-        playerRadioTx[client] = false
-        setElementData(client, "voice:radioTx", false, true)
-        return
-    end
+    handleSetRadioTx(client, isTransmitting)
+end)
 
-    playerRadioTx[client] = (isTransmitting == true)
-    setElementData(client, "voice:radioTx", playerRadioTx[client], true)
-
-    if not updateBroadcastForVoice(client) then
-        local base = generalBroadcasts[client] or {client}
-        broadcasts[client] = base
-        setPlayerVoiceBroadcastTo(client, base)
-    end
+addEventHandler("voice_plus:set_radio_tx", root, function(isTransmitting)
+    if not client then return end
+    handleSetRadioTx(client, isTransmitting)
 end)
 
 updateRadioChannel = function(freq, rType)
@@ -541,90 +588,105 @@ local function hangup(player)
     outputChatBox("Ligação encerrada.", player, 255, 120, 120)
 end
 
-addCommandHandler("vpriv", function(player, _, targetCharId, channelIdRaw)
-    if not targetCharId or not channelIdRaw then
-        outputChatBox("Uso: /vpriv <char:id> <canal>", player, 255, 200, 120)
-        return
-    end
 
-    local channelId = tonumber(channelIdRaw)
-    if not channelId then
-        outputChatBox("Canal inválido. Use um número.", player, 255, 120, 120)
-        return
-    end
-
+addEventHandler("voice_plus:call", root, function(targetCharId)
+    if not client then return end
+    if not targetCharId then return end
     local target = findPlayerByCharId(targetCharId)
-    if not target or not isElement(target) then
-        outputChatBox("Jogador não encontrado.", player, 255, 120, 120)
-        return
-    end
-
-    if target == player then
-        outputChatBox("Você não pode criar canal com você mesmo.", player, 255, 120, 120)
-        return
-    end
-
-    setPrivateChannel(player, target, channelId)
+    if not target or not isElement(target) then return end
+    if target == client then return end
+    startCall(client, target)
 end)
 
-addCommandHandler("vleave", function(player)
-    leavePrivateChannel(player)
+addEventHandler("voice_plus:hangup", root, function()
+    if not client then return end
+    hangup(client)
 end)
 
-addCommandHandler("radio", function(player, _, radioTypeRaw, freqRaw)
-    if not radioTypeRaw then
-        outputChatBox("Uso: /radio <police|faction> <freq> ou /radio off", player, 255, 200, 120)
-        return
-    end
-
-    local radioType = tostring(radioTypeRaw):lower()
-    if radioType == "off" or radioType == "0" then
-        leaveRadio(player)
-        return
-    end
-
+addEventHandler("voice_plus:radio", root, function(radioTypeRaw, freqRaw)
+    if not client then return end
+    local radioType = tostring(radioTypeRaw or ""):lower()
     if radioType ~= "police" and radioType ~= "faction" then
-        outputChatBox("Tipo inválido. Use police ou faction.", player, 255, 120, 120)
         return
     end
-
-    if not freqRaw then
-        outputChatBox("Uso: /radio <police|faction> <freq>", player, 255, 200, 120)
-        return
-    end
-
     local freq = tonumber(freqRaw)
-    if not freq then
-        outputChatBox("Frequência inválida. Use um número.", player, 255, 120, 120)
-        return
-    end
-
-    joinRadio(player, freq, radioType)
+    if not freq then return end
+    joinRadio(client, freq, radioType)
 end)
 
-addCommandHandler("call", function(player, _, targetCharId)
-    if not targetCharId then
-        outputChatBox("Uso: /call <char:id>", player, 255, 200, 120)
-        return
-    end
+addEventHandler("voice_plus:radio_off", root, function()
+    if not client then return end
+    leaveRadio(client)
+end)
 
+addEventHandler("voice_plus:private", root, function(targetCharId, channelIdRaw)
+    if not client then return end
+    if not targetCharId or not channelIdRaw then return end
+    local channelId = tonumber(channelIdRaw)
+    if not channelId then return end
     local target = findPlayerByCharId(targetCharId)
-    if not target or not isElement(target) then
-        outputChatBox("Jogador não encontrado.", player, 255, 120, 120)
-        return
-    end
+    if not target or not isElement(target) or target == client then return end
+    setPrivateChannel(client, target, channelId)
+end)
 
-    if target == player then
-        outputChatBox("Você não pode ligar para você mesmo.", player, 255, 120, 120)
-        return
-    end
+addEventHandler("voice_plus:private_off", root, function()
+    if not client then return end
+    leavePrivateChannel(client)
+end)
 
+local function exportCall(player, targetCharId)
+    if not (isElement(player) and getElementType(player) == "player") then return false end
+    if not targetCharId then return false end
+    local target = findPlayerByCharId(targetCharId)
+    if not target or not isElement(target) or target == player then return false end
     startCall(player, target)
-end)
+    return true
+end
 
-addCommandHandler("hangup", function(player)
+local function exportHangup(player)
+    if not (isElement(player) and getElementType(player) == "player") then return false end
     hangup(player)
-end)
+    return true
+end
+
+local function exportRadio(player, radioTypeRaw, freqRaw)
+    if not (isElement(player) and getElementType(player) == "player") then return false end
+    local radioType = tostring(radioTypeRaw or ""):lower()
+    if radioType ~= "police" and radioType ~= "faction" then return false end
+    local freq = tonumber(freqRaw)
+    if not freq then return false end
+    joinRadio(player, freq, radioType)
+    return true
+end
+
+local function exportRadioOff(player)
+    if not (isElement(player) and getElementType(player) == "player") then return false end
+    leaveRadio(player)
+    return true
+end
+
+local function exportSetRadioTx(player, isTransmitting)
+    if not (isElement(player) and getElementType(player) == "player") then return false end
+    handleSetRadioTx(player, isTransmitting)
+    return true
+end
+
+local function exportPrivate(player, targetCharId, channelIdRaw)
+    if not (isElement(player) and getElementType(player) == "player") then return false end
+    if not targetCharId or not channelIdRaw then return false end
+    local channelId = tonumber(channelIdRaw)
+    if not channelId then return false end
+    local target = findPlayerByCharId(targetCharId)
+    if not target or not isElement(target) or target == player then return false end
+    setPrivateChannel(player, target, channelId)
+    return true
+end
+
+local function exportPrivateOff(player)
+    if not (isElement(player) and getElementType(player) == "player") then return false end
+    leavePrivateChannel(player)
+    return true
+end
 
 addEventHandler("onPlayerVoiceStart", root, function()
     if not broadcasts[source] then
