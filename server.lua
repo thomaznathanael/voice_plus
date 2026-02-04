@@ -1,128 +1,104 @@
--- Remote events:
-addEvent("voice_local:setPlayerBroadcast", true)
-addEvent("voice_local:addToPlayerBroadcast", true)
-addEvent("voice_local:removeFromPlayerBroadcast", true)
-
 local broadcasts = {}
+local playerChannel = {} -- Armazena o canal de cada jogador
 
-for settingName, settingData in pairs(settings) do
-    if settingData then
-        settings[settingName].value = get("*"..settingData.key)
-    end
-end
-
+-- Sincroniza configurações com o Client
 addEventHandler("onPlayerResourceStart", root, function(res)
     if res == resource then
         triggerClientEvent(source, "voice_local:updateSettings", source, settings)
     end
 end)
 
--- Don't let the player talk to anyone as soon as they join
-addEventHandler("onPlayerJoin", root, function()
-    setPlayerVoiceBroadcastTo(source, {})
+-- Função mestre para decidir quem ouve quem
+function updateVoiceTargets(player)
+    if not isElement(player) then return end
+    
+    local channel = playerChannel[player]
+    local targets = {}
+
+    if channel then
+        -- MODO CANAL: Procura todos os jogadores no mesmo canal (sem limite de distância)
+        for _, p in ipairs(getElementsByType("player")) do
+            if playerChannel[p] == channel then
+                table.insert(targets, p)
+            end
+        end
+    else
+        -- MODO PROXIMIDADE: Usa apenas os jogadores que o cliente reportou como "perto"
+        targets = broadcasts[player] or {player}
+    end
+
+    setPlayerVoiceBroadcastTo(player, targets)
+end
+
+-- Comandos de Canal
+addCommandHandler("canal", function(player, cmd, id)
+    local id = tonumber(id)
+    if not id then return outputChatBox("Use: /canal [id]", player) end
+
+    playerChannel[player] = id
+    setElementData(player, "voice:channel", id) -- Sincroniza com o client
+    outputChatBox("Entrou no canal de voz: " .. id, player, 0, 255, 0)
+    
+    updateVoiceTargets(player)
 end)
 
-addEventHandler("onPlayerQuit", root, function()
-    broadcasts[source] = nil
+addCommandHandler("saircanal", function(player)
+    if not playerChannel[player] then return end
+    
+    playerChannel[player] = nil
+    setElementData(player, "voice:channel", nil)
+    outputChatBox("Você voltou para o modo proximidade.", player, 255, 255, 0)
+    
+    updateVoiceTargets(player)
 end)
 
--- Anti-cheat
--- Prevents clients from wanting to broadcast their voice to players that are really too far away
-local function canPlayerBeWithinOtherPlayerStreamDistance(player, otherPlayer)
+-- Eventos de Proximidade (Broadcasts)
+addEventHandler("voice_local:setPlayerBroadcast", root, function(players)
+    if not client then return end
+    broadcasts[client] = {client}
+    for p, _ in pairs(players) do
+        if p ~= client and canPlayerBeWithinOtherPlayerStreamDistance(client, p) then
+            table.insert(broadcasts[client], p)
+        end
+    end
+    updateVoiceTargets(client)
+end)
+
+addEventHandler("voice_local:addToPlayerBroadcast", root, function(p)
+    if not client or not isElement(p) then return end
+    broadcasts[client] = broadcasts[client] or {client}
+    table.insert(broadcasts[client], p)
+    updateVoiceTargets(client)
+end)
+
+addEventHandler("voice_local:removeFromPlayerBroadcast", root, function(p)
+    if not client or not broadcasts[client] then return end
+    for i, b in ipairs(broadcasts[client]) do
+        if b == p then table.remove(broadcasts[client], i) break end
+    end
+    updateVoiceTargets(client)
+end)
+
+-- Gatilhos de Voz
+addEventHandler("onPlayerVoiceStart", root, function()
+    if not broadcasts[source] and not playerChannel[source] then 
+        cancelEvent() 
+        return 
+    end
+    -- No canal, enviamos o evento de "falando" para todos no canal
+    local targets = playerChannel[source] and "all" or broadcasts[source]
+    triggerClientEvent(root, "voice_local:onClientPlayerVoiceStart", source, source)
+end)
+
+addEventHandler("onPlayerVoiceStop", root, function()
+    triggerClientEvent(root, "voice_local:onClientPlayerVoiceStop", source, source)
+end)
+
+-- Anti-cheat (original)
+function canPlayerBeWithinOtherPlayerStreamDistance(player, otherPlayer)
     local maxDist = tonumber(getServerConfigSetting("ped_syncer_distance")) or 100
-    if (not isElement(player)) or (not isElement(otherPlayer)) then
-        return false
-    end
-    if getElementType(player) ~= "player" or getElementType(otherPlayer) ~= "player" then
-        return false
-    end
-    if getElementInterior(player) ~= getElementInterior(otherPlayer)
-    or getElementDimension(player) ~= getElementDimension(otherPlayer) then
-        return false
-    end
+    if getElementInterior(player) ~= getElementInterior(otherPlayer) or getElementDimension(player) ~= getElementDimension(otherPlayer) then return false end
     local px, py, pz = getElementPosition(player)
     local opx, opy, opz = getElementPosition(otherPlayer)
     return getDistanceBetweenPoints3D(px, py, pz, opx, opy, opz) <= maxDist
 end
-
-addEventHandler("voice_local:setPlayerBroadcast", root, function(players)
-    if not client then return end
-    if type(players) ~= "table" then return end
-    broadcasts[client] = {client}
-
-    for player, _ in pairs(players) do
-        if player ~= client then
-            if canPlayerBeWithinOtherPlayerStreamDistance(client, player) then
-                table.insert(broadcasts[client], player)
-            else
-                iprint(eventName, "ignoring", getPlayerName(player))
-            end
-        end
-    end
-    setPlayerVoiceBroadcastTo(client, broadcasts[client])
-end)
-
-addEventHandler("voice_local:addToPlayerBroadcast", root, function(player)
-    if not client then return end
-    if not (isElement(player) and getElementType(player) == "player") then return end
-
-    if not broadcasts[client] then
-        broadcasts[client] = {client}
-    end
-
-    if not canPlayerBeWithinOtherPlayerStreamDistance(client, player) then
-        iprint(eventName, "ignoring", getPlayerName(player))
-        return
-    end
-
-    -- Prevent duplicates
-    for _, broadcast in pairs(broadcasts[client]) do
-        if player == broadcast then
-            return
-        end
-    end
-
-    table.insert(broadcasts[client], player)
-    setPlayerVoiceBroadcastTo(client, broadcasts[client])
-end)
-
-addEventHandler("voice_local:removeFromPlayerBroadcast", root, function(player)
-    if not client then return end
-    if not (isElement(player) and getElementType(player) == "player") then return end
-
-    if not broadcasts[client] then
-        return
-    end
-
-    for i, broadcast in pairs(broadcasts[client]) do
-        if player~=client and player == broadcast then
-            table.remove(broadcasts[client], i)
-            break
-        end
-    end
-
-    setPlayerVoiceBroadcastTo(client, broadcasts[client])
-end)
-
-addEventHandler("onPlayerVoiceStart", root, function()
-    if not broadcasts[source] then
-        -- Somehow if the system still hasn't loaded the player, prevent them from talking
-        cancelEvent()
-        return
-    end
-    triggerClientEvent(broadcasts[source], "voice_local:onClientPlayerVoiceStart", source, source)
-end)
-
-addEventHandler("onPlayerVoiceStop", root, function()
-    if not broadcasts[source] then
-        return
-    end
-    triggerClientEvent(broadcasts[source], "voice_local:onClientPlayerVoiceStop", source, source)
-end)
-
--- Cancel resource start if voice is not enabled on the server
-addEventHandler("onResourceStart", resourceRoot, function()
-    if not isVoiceEnabled() then
-        cancelEvent(true, "<voice> setting is not enabled on this server")
-    end
-end, false)
