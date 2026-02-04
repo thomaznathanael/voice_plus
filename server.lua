@@ -425,10 +425,10 @@ local function joinRadio(player, freq, rType)
     radioChannels[key][player] = true
     playerRadioFreq[player] = freq
     playerRadioType[player] = rType
-    playerRadioTx[player] = true
+    playerRadioTx[player] = false
     setElementData(player, "voice:radioFreq", freq, true)
     setElementData(player, "voice:radioType", rType, true)
-    setElementData(player, "voice:radioTx", true, true)
+    setElementData(player, "voice:radioTx", false, true)
 
     updateRadioChannel(freq, rType)
 
