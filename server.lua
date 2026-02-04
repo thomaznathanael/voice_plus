@@ -213,10 +213,6 @@ addEventHandler("voice_local:setPlayerBroadcast", root, function(players)
     if not client then return end
     if type(players) ~= "table" then return end
 
-    if updateBroadcastForVoice(client) then
-        return
-    end
-
     generalBroadcasts[client] = {client}
 
     for player, _ in pairs(players) do
@@ -425,7 +421,7 @@ local function joinRadio(player, freq, rType)
     radioChannels[key][player] = true
     playerRadioFreq[player] = freq
     playerRadioType[player] = rType
-    playerRadioTx[player] = false
+    playerRadioTx[player] = true
     setElementData(player, "voice:radioFreq", freq, true)
     setElementData(player, "voice:radioType", rType, true)
 
