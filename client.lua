@@ -22,11 +22,13 @@ local sx, sy = guiGetScreenSize()
 
 local devSX, devSY = sx / 1920, sy / 1080
 local talkRingTexture = dxCreateTexture("ring.png", "dxt5", true, "clamp")
+local talkRingRadioTexture = dxCreateTexture("ring-radio.png", "dxt5", true, "clamp")
 local talkRingSize = 0.6
 local talkRingColor = tocolor(255, 255, 255, 220)
 
-local function drawTalkRing(player)
-    if not isElement(talkRingTexture) then
+local function drawTalkRing(player, useRadio)
+    local texture = useRadio and talkRingRadioTexture or talkRingTexture
+    if not isElement(texture) then
         return
     end
     local px, py, pz = getElementPosition(player)
@@ -34,7 +36,7 @@ local function drawTalkRing(player)
     dxDrawMaterialLine3D(
         px - talkRingSize, py, z,
         px + talkRingSize, py, z,
-        talkRingTexture,
+        texture,
         talkRingSize * 2,
         talkRingColor,
         false,
@@ -94,11 +96,12 @@ local function handlePreRender()
         if talking and (settings.showTalkingIcon.value == true)
         and (voiceMode ~= "general" or realDistanceToPlayer < maxDistance)
         and (voiceMode ~= "general" or isLineOfSightClear(cameraX, cameraY, cameraZ, otherPlayerX, otherPlayerY, otherPlayerZ, false, false, false, false, true, true, true, localPlayer)) then
-            drawTalkRing(player)
+            local otherTx = getElementData(player, "voice:radioTx")
+            drawTalkRing(player, otherTx == true)
         end
     end
     if localPlayerTalking and (settings.showTalkingIcon.value == true) then
-        drawTalkRing(localPlayer)
+        drawTalkRing(localPlayer, radioTxActive == true)
     end
 end
 
