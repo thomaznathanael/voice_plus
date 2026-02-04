@@ -5,6 +5,7 @@ addEvent("voice_local:removeFromPlayerBroadcast", true)
 addEvent("voice_local:requestPrivateLeave", true)
 addEvent("voice_local:playRadioRoger", true)
 addEvent("voice_local:playRadioRogerNearby", true)
+addEvent("voice_local:setRadioTx", true)
 
 local broadcasts = {}
 local generalBroadcasts = {}
@@ -13,6 +14,7 @@ local playerPrivateChannel = {}
 local radioChannels = {}
 local playerRadioFreq = {}
 local playerRadioType = {}
+local playerRadioTx = {}
 local callPartners = {}
 local updateRadioChannel
 local applyModeAfterCall
@@ -63,6 +65,7 @@ addEventHandler("onPlayerQuit", root, function()
     end
     playerRadioFreq[source] = nil
     playerRadioType[source] = nil
+    playerRadioTx[source] = nil
     setElementData(source, "voice:radioFreq", nil, true)
     setElementData(source, "voice:radioType", nil, true)
 
@@ -157,6 +160,9 @@ end
 local function updateBroadcastForRadio(player)
     local freq = playerRadioFreq[player]
     if not freq then
+        return false
+    end
+    if not playerRadioTx[player] then
         return false
     end
     local list = getRadioMembersList(freq, playerRadioType[player])
@@ -351,6 +357,26 @@ addEventHandler("voice_local:requestPrivateLeave", root, function()
     leavePrivateChannel(client)
 end)
 
+addEventHandler("voice_local:setRadioTx", root, function(isTransmitting)
+    if not client then return end
+    if callPartners[client] or playerPrivateChannel[client] then
+        playerRadioTx[client] = false
+        return
+    end
+    if not playerRadioFreq[client] or not playerRadioType[client] then
+        playerRadioTx[client] = false
+        return
+    end
+
+    playerRadioTx[client] = (isTransmitting == true)
+
+    if not updateBroadcastForVoice(client) then
+        local base = generalBroadcasts[client] or {client}
+        broadcasts[client] = base
+        setPlayerVoiceBroadcastTo(client, base)
+    end
+end)
+
 updateRadioChannel = function(freq, rType)
     local list = getRadioMembersList(freq, rType)
     if not list then
@@ -360,10 +386,11 @@ updateRadioChannel = function(freq, rType)
 
     for _, member in ipairs(list) do
         if not callPartners[member] and not playerPrivateChannel[member] then
-            local base = generalBroadcasts[member] or {member}
-            local combined = mergeUnique(base, list)
-            broadcasts[member] = combined
-            setPlayerVoiceBroadcastTo(member, combined)
+            if not updateBroadcastForVoice(member) then
+                local base = generalBroadcasts[member] or {member}
+                broadcasts[member] = base
+                setPlayerVoiceBroadcastTo(member, base)
+            end
             triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", rType, freq)
         end
     end
@@ -398,6 +425,7 @@ local function joinRadio(player, freq, rType)
     radioChannels[key][player] = true
     playerRadioFreq[player] = freq
     playerRadioType[player] = rType
+    playerRadioTx[player] = false
     setElementData(player, "voice:radioFreq", freq, true)
     setElementData(player, "voice:radioType", rType, true)
 
@@ -425,6 +453,7 @@ local function leaveRadio(player)
     end
     playerRadioFreq[player] = nil
     playerRadioType[player] = nil
+    playerRadioTx[player] = nil
     setElementData(player, "voice:radioFreq", nil, true)
     setElementData(player, "voice:radioType", nil, true)
 
@@ -610,14 +639,14 @@ addEventHandler("onPlayerVoiceStop", root, function()
 
     local freq = playerRadioFreq[source]
     local rType = playerRadioType[source]
-    if freq and rType and not callPartners[source] and not playerPrivateChannel[source] then
+    if freq and rType and playerRadioTx[source] and not callPartners[source] and not playerPrivateChannel[source] then
         local list = getRadioMembersList(freq, rType)
         if list then
             triggerClientEvent(list, "voice_local:playRadioRoger", source, source)
         end
     end
 
-    if freq and rType and generalBroadcasts[source] then
+    if freq and rType and playerRadioTx[source] and generalBroadcasts[source] then
         triggerClientEvent(generalBroadcasts[source], "voice_local:playRadioRogerNearby", source, source)
     end
 end)

@@ -6,6 +6,7 @@ addEvent("voice_local:setVoiceMode", true)
 addEvent("voice_local:requestBroadcastRefresh", true)
 addEvent("voice_local:playRadioRoger", true)
 addEvent("voice_local:playRadioRogerNearby", true)
+addEvent("voice_local:radioTxState", true)
 
 -- Only starts handling player voices after receiving the settings from the server
 local initialWaiting = true
@@ -107,6 +108,13 @@ local function computeDistanceVolume(distance, maxDistance)
     return (1.0 - (distance / maxDistance)^2)
 end
 
+local function setRadioTxState(state)
+    if voiceMode ~= "radio" then
+        return
+    end
+    triggerServerEvent("voice_local:setRadioTx", localPlayer, state)
+end
+
 addEventHandler("onClientResourceStart", resourceRoot, function()
     for _, player in pairs(getElementsByType("player", root, true)) do
         if player ~= localPlayer and streamedPlayers[player] == nil then
@@ -115,6 +123,13 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
         end
     end
     triggerServerEvent("voice_local:setPlayerBroadcast", localPlayer, streamedPlayers)
+
+    bindKey("backslash", "down", function()
+        setRadioTxState(true)
+    end)
+    bindKey("backslash", "up", function()
+        setRadioTxState(false)
+    end)
 end, false)
 
 -- Handle remote/other player quit
@@ -185,6 +200,11 @@ addEventHandler("voice_local:updateSettings", localPlayer, function(settingsFrom
         initialWaiting = false
     end
 end, false)
+
+addEventHandler("onClientResourceStop", resourceRoot, function()
+    unbindKey("backslash", "down")
+    unbindKey("backslash", "up")
+end)
 
 addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner, freq)
     voiceMode = mode or "general"
