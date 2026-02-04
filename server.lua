@@ -14,6 +14,15 @@ addEvent("voice_plus:set_radio_tx", true)
 addEvent("voice_plus:private", true)
 addEvent("voice_plus:private_off", true)
 
+-- Forward declarations for exports
+local exportCall
+local exportHangup
+local exportRadio
+local exportRadioOff
+local exportSetRadioTx
+local exportPrivate
+local exportPrivateOff
+
 local broadcasts = {}
 local generalBroadcasts = {}
 local privateChannels = {}
