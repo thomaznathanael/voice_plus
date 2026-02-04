@@ -28,7 +28,7 @@ local iconTexture = dxCreateTexture("icon.png", "dxt5", true, "clamp")
 local talkEllipseColor = tocolor(0, 255, 0, 160)
 local talkEllipseRadiusX = 0.4
 local talkEllipseRadiusY = 0.4
-local talkEllipseSegments = 64
+local talkEllipseSegments = 120
 
 local function drawTalkingIcon(player, camDistToPlayer)
     local boneX, boneY, boneZ = getPedBonePosition(player, 8)
