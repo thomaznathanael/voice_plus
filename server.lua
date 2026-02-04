@@ -485,6 +485,8 @@ applyModeAfterCall = function(player)
     end
 
     if playerRadioFreq[player] then
+        playerRadioTx[player] = false
+        setElementData(player, "voice:radioTx", false, true)
         updateRadioChannel(playerRadioFreq[player], playerRadioType[player])
         triggerClientEvent(player, "voice_local:setVoiceMode", player, "radio", playerRadioType[player], playerRadioFreq[player])
         return
