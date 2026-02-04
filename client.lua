@@ -4,6 +4,7 @@ addEvent("voice_local:onClientPlayerVoiceStop", true)
 addEvent("voice_local:updateSettings", true)
 addEvent("voice_local:setVoiceMode", true)
 addEvent("voice_local:requestBroadcastRefresh", true)
+addEvent("voice_local:playRadioRoger", true)
 
 -- Only starts handling player voices after receiving the settings from the server
 local initialWaiting = true
@@ -180,3 +181,13 @@ end, false)
 addEventHandler("voice_local:requestBroadcastRefresh", localPlayer, function()
     triggerServerEvent("voice_local:setPlayerBroadcast", localPlayer, streamedPlayers)
 end, false)
+
+addEventHandler("voice_local:playRadioRoger", root, function()
+    if voiceMode ~= "radio" then
+        return
+    end
+    local sound = playSound("roger.mp3")
+    if sound then
+        setSoundVolume(sound, 0.6)
+    end
+end)

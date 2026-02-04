@@ -3,6 +3,7 @@ addEvent("voice_local:setPlayerBroadcast", true)
 addEvent("voice_local:addToPlayerBroadcast", true)
 addEvent("voice_local:removeFromPlayerBroadcast", true)
 addEvent("voice_local:requestPrivateLeave", true)
+addEvent("voice_local:playRadioRoger", true)
 
 local broadcasts = {}
 local privateChannels = {}
@@ -623,6 +624,14 @@ addEventHandler("onPlayerVoiceStop", root, function()
         return
     end
     triggerClientEvent(broadcasts[source], "voice_local:onClientPlayerVoiceStop", source, source)
+
+    local freq = playerRadioFreq[source]
+    if freq and not callPartners[source] and not playerPrivateChannel[source] then
+        local list = getRadioMembersList(freq)
+        if list then
+            triggerClientEvent(list, "voice_local:playRadioRoger", source, source)
+        end
+    end
 end)
 
 -- Cancel resource start if voice is not enabled on the server
