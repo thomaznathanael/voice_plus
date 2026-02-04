@@ -68,6 +68,7 @@ addEventHandler("onPlayerQuit", root, function()
     playerRadioTx[source] = nil
     setElementData(source, "voice:radioFreq", nil, true)
     setElementData(source, "voice:radioType", nil, true)
+    setElementData(source, "voice:radioTx", nil, true)
 
     local channelId = playerPrivateChannel[source]
     if channelId then
@@ -357,14 +358,17 @@ addEventHandler("voice_local:setRadioTx", root, function(isTransmitting)
     if not client then return end
     if not playerRadioFreq[client] or not playerRadioType[client] then
         playerRadioTx[client] = false
+        setElementData(client, "voice:radioTx", false, true)
         return
     end
     if callPartners[client] or playerPrivateChannel[client] then
         playerRadioTx[client] = false
+        setElementData(client, "voice:radioTx", false, true)
         return
     end
 
     playerRadioTx[client] = (isTransmitting == true)
+    setElementData(client, "voice:radioTx", playerRadioTx[client], true)
 
     if not updateBroadcastForVoice(client) then
         local base = generalBroadcasts[client] or {client}
@@ -424,6 +428,7 @@ local function joinRadio(player, freq, rType)
     playerRadioTx[player] = true
     setElementData(player, "voice:radioFreq", freq, true)
     setElementData(player, "voice:radioType", rType, true)
+    setElementData(player, "voice:radioTx", true, true)
 
     updateRadioChannel(freq, rType)
 
@@ -452,6 +457,7 @@ local function leaveRadio(player)
     playerRadioTx[player] = nil
     setElementData(player, "voice:radioFreq", nil, true)
     setElementData(player, "voice:radioType", nil, true)
+    setElementData(player, "voice:radioTx", nil, true)
 
     if not callPartners[player] and not playerPrivateChannel[player] then
         resetPlayerToGeneral(player)

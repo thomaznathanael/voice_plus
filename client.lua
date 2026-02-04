@@ -60,7 +60,8 @@ local function handlePreRender()
         elseif voiceMode == "radio" then
             local otherType = getElementData(player, "voice:radioType")
             local otherFreq = getElementData(player, "voice:radioFreq")
-            if radioType and radioFreq and otherType == radioType and tonumber(otherFreq) == radioFreq then
+            local otherTx = getElementData(player, "voice:radioTx")
+            if radioType and radioFreq and otherType == radioType and tonumber(otherFreq) == radioFreq and otherTx == true then
                 playerVolume = 1.0
             else
                 if (realDistanceToPlayer >= maxDistance) then
