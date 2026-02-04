@@ -44,7 +44,7 @@ local function drawTalkingIcon(player, camDistToPlayer)
     end
 end
 
-local talkEllipseSegments = 180
+local talkEllipseSegments = 360
 
 local function drawTalkEllipse(player)
     local px, py, pz = getElementPosition(player)
