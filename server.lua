@@ -617,7 +617,7 @@ addEventHandler("onPlayerVoiceStop", root, function()
         end
     end
 
-    if generalBroadcasts[source] then
+    if freq and rType and generalBroadcasts[source] then
         triggerClientEvent(generalBroadcasts[source], "voice_local:playRadioRogerNearby", source, source)
     end
 end)
