@@ -161,12 +161,12 @@ addEventHandler("voice_local:removeFromPlayerBroadcast", root, function(player)
     setPlayerVoiceBroadcastTo(client, broadcasts[client])
 end)
 
-local function findPlayerByPartialName(namePart)
-    if not namePart or namePart == "" then return nil end
-    local namePartLower = namePart:lower()
+local function findPlayerByCharId(charIdRaw)
+    if not charIdRaw or charIdRaw == "" then return nil end
+    local charIdStr = tostring(charIdRaw)
     for _, player in ipairs(getElementsByType("player")) do
-        local playerName = getPlayerName(player)
-        if playerName and playerName:lower():find(namePartLower, 1, true) then
+        local playerCharId = getElementData(player, "char:id")
+        if playerCharId ~= nil and tostring(playerCharId) == charIdStr then
             return player
         end
     end
@@ -227,9 +227,9 @@ addEventHandler("voice_local:requestPrivateLeave", root, function()
     leavePrivateChannel(client)
 end)
 
-addCommandHandler("vpriv", function(player, _, targetName, channelIdRaw)
-    if not targetName or not channelIdRaw then
-        outputChatBox("Uso: /vpriv <player> <canal>", player, 255, 200, 120)
+addCommandHandler("vpriv", function(player, _, targetCharId, channelIdRaw)
+    if not targetCharId or not channelIdRaw then
+        outputChatBox("Uso: /vpriv <char:id> <canal>", player, 255, 200, 120)
         return
     end
 
@@ -239,7 +239,7 @@ addCommandHandler("vpriv", function(player, _, targetName, channelIdRaw)
         return
     end
 
-    local target = findPlayerByPartialName(targetName)
+    local target = findPlayerByCharId(targetCharId)
     if not target or not isElement(target) then
         outputChatBox("Jogador não encontrado.", player, 255, 120, 120)
         return
