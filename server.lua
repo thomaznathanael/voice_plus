@@ -643,7 +643,7 @@ addEventHandler("voice_plus:private_off", root, function()
     leavePrivateChannel(client)
 end)
 
-local function exportCall(player, targetCharId)
+exportCall = function(player, targetCharId)
     if not (isElement(player) and getElementType(player) == "player") then return false end
     if not targetCharId then return false end
     local target = findPlayerByCharId(targetCharId)
@@ -652,13 +652,13 @@ local function exportCall(player, targetCharId)
     return true
 end
 
-local function exportHangup(player)
+exportHangup = function(player)
     if not (isElement(player) and getElementType(player) == "player") then return false end
     hangup(player)
     return true
 end
 
-local function exportRadio(player, radioTypeRaw, freqRaw)
+exportRadio = function(player, radioTypeRaw, freqRaw)
     if not (isElement(player) and getElementType(player) == "player") then return false end
     local radioType = tostring(radioTypeRaw or ""):lower()
     if radioType ~= "police" and radioType ~= "faction" then return false end
@@ -668,19 +668,19 @@ local function exportRadio(player, radioTypeRaw, freqRaw)
     return true
 end
 
-local function exportRadioOff(player)
+exportRadioOff = function(player)
     if not (isElement(player) and getElementType(player) == "player") then return false end
     leaveRadio(player)
     return true
 end
 
-local function exportSetRadioTx(player, isTransmitting)
+exportSetRadioTx = function(player, isTransmitting)
     if not (isElement(player) and getElementType(player) == "player") then return false end
     handleSetRadioTx(player, isTransmitting)
     return true
 end
 
-local function exportPrivate(player, targetCharId, channelIdRaw)
+exportPrivate = function(player, targetCharId, channelIdRaw)
     if not (isElement(player) and getElementType(player) == "player") then return false end
     if not targetCharId or not channelIdRaw then return false end
     local channelId = tonumber(channelIdRaw)
@@ -691,7 +691,7 @@ local function exportPrivate(player, targetCharId, channelIdRaw)
     return true
 end
 
-local function exportPrivateOff(player)
+exportPrivateOff = function(player)
     if not (isElement(player) and getElementType(player) == "player") then return false end
     leavePrivateChannel(player)
     return true
