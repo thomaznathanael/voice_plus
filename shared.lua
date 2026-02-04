@@ -1,4 +1,3 @@
--- shared.lua
 settings = {
     showTalkingIcon = {key="show_talking_icon", value=nil},
     maxVoiceDistance = {key="max_voice_distance", value=nil},
@@ -6,6 +5,3 @@ settings = {
 }
 
 DEBUG_MODE = false
-
--- Adicione isso:
-CHANNELS = {} -- Tabela para gerenciar quem está em qual canal
