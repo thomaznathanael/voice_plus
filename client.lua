@@ -14,6 +14,7 @@ local localPlayerTalking = false
 local voiceMode = "general"
 local voicePartner = nil
 local radioType = nil
+local radioFreq = nil
 
 local sx, sy = guiGetScreenSize()
 
@@ -55,7 +56,17 @@ local function handlePreRender()
                 playerVolume = 0.0
             end
         elseif voiceMode == "radio" then
-            playerVolume = 1.0
+            local otherType = getElementData(player, "voice:radioType")
+            local otherFreq = getElementData(player, "voice:radioFreq")
+            if radioType and radioFreq and otherType == radioType and tonumber(otherFreq) == radioFreq then
+                playerVolume = 1.0
+            else
+                if (realDistanceToPlayer >= maxDistance) then
+                    playerVolume = 0.0
+                else
+                    playerVolume = (1.0 - (realDistanceToPlayer / maxDistance)^2)
+                end
+            end
         else
             if (realDistanceToPlayer >= maxDistance) then
                 playerVolume = 0.0
@@ -167,14 +178,16 @@ addEventHandler("voice_local:updateSettings", localPlayer, function(settingsFrom
     end
 end, false)
 
-addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner)
+addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner, freq)
     voiceMode = mode or "general"
     voicePartner = (isElement(partner) and getElementType(partner) == "player") and partner or nil
 
     if voiceMode == "radio" and type(partner) == "string" then
         radioType = partner
+        radioFreq = tonumber(freq)
     elseif voiceMode ~= "radio" then
         radioType = nil
+        radioFreq = nil
     end
 
     if (voiceMode == "call" or voiceMode == "private") and voicePartner then

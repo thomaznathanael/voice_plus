@@ -62,6 +62,8 @@ addEventHandler("onPlayerQuit", root, function()
     end
     playerRadioFreq[source] = nil
     playerRadioType[source] = nil
+    setElementData(source, "voice:radioFreq", nil, true)
+    setElementData(source, "voice:radioType", nil, true)
 
     local channelId = playerPrivateChannel[source]
     if channelId then
@@ -334,7 +336,7 @@ local function leavePrivateChannel(player)
                 triggerClientEvent(member, "voice_local:setVoiceMode", member, "call", callPartners[member])
             elseif playerRadioFreq[member] then
                 updateRadioChannel(playerRadioFreq[member], playerRadioType[member])
-                triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", playerRadioType[member])
+                triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", playerRadioType[member], playerRadioFreq[member])
             else
                 resetPlayerToGeneral(member)
             end
@@ -359,7 +361,7 @@ updateRadioChannel = function(freq, rType)
         if not callPartners[member] and not playerPrivateChannel[member] then
             broadcasts[member] = list
             setPlayerVoiceBroadcastTo(member, list)
-            triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", rType)
+            triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", rType, freq)
         end
     end
 end
@@ -393,6 +395,8 @@ local function joinRadio(player, freq, rType)
     radioChannels[key][player] = true
     playerRadioFreq[player] = freq
     playerRadioType[player] = rType
+    setElementData(player, "voice:radioFreq", freq, true)
+    setElementData(player, "voice:radioType", rType, true)
 
     updateRadioChannel(freq, rType)
 
@@ -418,6 +422,8 @@ local function leaveRadio(player)
     end
     playerRadioFreq[player] = nil
     playerRadioType[player] = nil
+    setElementData(player, "voice:radioFreq", nil, true)
+    setElementData(player, "voice:radioType", nil, true)
 
     if not callPartners[player] and not playerPrivateChannel[player] then
         resetPlayerToGeneral(player)
@@ -446,7 +452,7 @@ applyModeAfterCall = function(player)
 
     if playerRadioFreq[player] then
         updateRadioChannel(playerRadioFreq[player], playerRadioType[player])
-        triggerClientEvent(player, "voice_local:setVoiceMode", player, "radio", playerRadioType[player])
+        triggerClientEvent(player, "voice_local:setVoiceMode", player, "radio", playerRadioType[player], playerRadioFreq[player])
         return
     end
 
