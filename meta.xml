@@ -9,7 +9,6 @@
 		<setting name="*show_talking_icon" value="[true]"/>
 	</settings>
 
-	<file src="icon.png"/>
 	<file src="faction-roger.mp3"/>
 	<file src="police-roger.mp3"/>
 	<file src="ring.png"/>

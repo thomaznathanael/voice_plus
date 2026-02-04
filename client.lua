@@ -20,29 +20,9 @@ local radioFreq = nil
 local sx, sy = guiGetScreenSize()
 
 local devSX, devSY = sx / 1920, sy / 1080
-local iconWidth = 108 * devSX
-local iconHalfWidth = iconWidth / 2
-local iconHeight = 180 * devSY
-local iconHalfHeight = iconHeight / 2
-local iconTexture = dxCreateTexture("icon.png", "dxt5", true, "clamp")
 local talkRingTexture = dxCreateTexture("ring.png", "dxt5", true, "clamp")
 local talkRingSize = 0.9
 local talkRingColor = tocolor(255, 255, 255, 220)
-
-local function drawTalkingIcon(player, camDistToPlayer)
-    local boneX, boneY, boneZ = getPedBonePosition(player, 8)
-    local screenX, screenY = getScreenFromWorldPosition(boneX, boneY, boneZ + 0.4)
-    if screenX and screenY then
-        local factor = 1 / camDistToPlayer
-        dxDrawImage(
-            screenX - iconHalfWidth * factor,
-            screenY - iconHalfHeight * factor,
-            iconWidth * factor,
-            iconHeight * factor,
-            iconTexture, 0, 0, 0, -1, false
-        )
-    end
-end
 
 local function drawTalkRing(player)
     if not isElement(talkRingTexture) then
@@ -55,7 +35,9 @@ local function drawTalkRing(player)
         px + talkRingSize, py, z,
         talkRingTexture,
         talkRingSize * 2,
-        talkRingColor
+        talkRingColor,
+        false,
+        px, py, z + 1.0
     )
 end
 
@@ -110,13 +92,10 @@ local function handlePreRender()
         if talking and (settings.showTalkingIcon.value == true)
         and (voiceMode ~= "general" or realDistanceToPlayer < maxDistance)
         and (voiceMode ~= "general" or isLineOfSightClear(cameraX, cameraY, cameraZ, otherPlayerX, otherPlayerY, otherPlayerZ, false, false, false, false, true, true, true, localPlayer)) then
-            drawTalkingIcon(player, getDistanceBetweenPoints3D(cameraX, cameraY, cameraZ, otherPlayerX, otherPlayerY, otherPlayerZ))
+            drawTalkRing(player)
         end
     end
     if localPlayerTalking and (settings.showTalkingIcon.value == true) then
-        drawTalkingIcon(localPlayer, getDistanceBetweenPoints3D(cameraX, cameraY, cameraZ, localPlayerX, localPlayerY, localPlayerZ))
-    end
-    if localPlayerTalking then
         drawTalkRing(localPlayer)
     end
 end
