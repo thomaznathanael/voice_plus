@@ -5,6 +5,7 @@ addEvent("voice_local:updateSettings", true)
 addEvent("voice_local:setVoiceMode", true)
 addEvent("voice_local:requestBroadcastRefresh", true)
 addEvent("voice_local:playRadioRoger", true)
+addEvent("voice_local:playRadioRogerNearby", true)
 
 -- Only starts handling player voices after receiving the settings from the server
 local initialWaiting = true
@@ -97,6 +98,13 @@ local function handlePreRender()
     if localPlayerTalking and (settings.showTalkingIcon.value == true) then
         drawTalkingIcon(localPlayer, getDistanceBetweenPoints3D(cameraX, cameraY, cameraZ, localPlayerX, localPlayerY, localPlayerZ))
     end
+end
+
+local function computeDistanceVolume(distance, maxDistance)
+    if distance >= maxDistance then
+        return 0.0
+    end
+    return (1.0 - (distance / maxDistance)^2)
 end
 
 addEventHandler("onClientResourceStart", resourceRoot, function()
@@ -213,5 +221,42 @@ addEventHandler("voice_local:playRadioRoger", root, function()
     local sound = playSound(soundPath)
     if sound then
         setSoundVolume(sound, 0.6)
+    end
+end)
+
+addEventHandler("voice_local:playRadioRogerNearby", root, function(sourcePlayer)
+    if not (isElement(sourcePlayer) and getElementType(sourcePlayer) == "player") then
+        return
+    end
+    if sourcePlayer == localPlayer then
+        return
+    end
+
+    local sourceType = getElementData(sourcePlayer, "voice:radioType")
+    local sourceFreq = getElementData(sourcePlayer, "voice:radioFreq")
+    if voiceMode == "radio" and radioType and radioFreq and sourceType == radioType and tonumber(sourceFreq) == radioFreq then
+        return
+    end
+
+    local maxDistance = settings.maxVoiceDistance.value
+    local localX, localY, localZ = getElementPosition(localPlayer)
+    local sourceX, sourceY, sourceZ = getElementPosition(sourcePlayer)
+    local distance = getDistanceBetweenPoints3D(localX, localY, localZ, sourceX, sourceY, sourceZ)
+    local volume = computeDistanceVolume(distance, maxDistance) * settings.voiceSoundBoost.value
+    if volume <= 0.0 then
+        return
+    end
+
+    local soundPath = "faction-roger.mp3"
+    if sourceType == "police" then
+        soundPath = "police-roger.mp3"
+    end
+
+    local sound = playSound(soundPath)
+    if sound then
+        if volume > 1.0 then
+            volume = 1.0
+        end
+        setSoundVolume(sound, volume)
     end
 end)

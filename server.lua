@@ -4,6 +4,7 @@ addEvent("voice_local:addToPlayerBroadcast", true)
 addEvent("voice_local:removeFromPlayerBroadcast", true)
 addEvent("voice_local:requestPrivateLeave", true)
 addEvent("voice_local:playRadioRoger", true)
+addEvent("voice_local:playRadioRogerNearby", true)
 
 local broadcasts = {}
 local generalBroadcasts = {}
@@ -614,6 +615,10 @@ addEventHandler("onPlayerVoiceStop", root, function()
         if list then
             triggerClientEvent(list, "voice_local:playRadioRoger", source, source)
         end
+    end
+
+    if generalBroadcasts[source] then
+        triggerClientEvent(generalBroadcasts[source], "voice_local:playRadioRogerNearby", source, source)
     end
 end)
 
