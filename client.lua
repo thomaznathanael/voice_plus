@@ -2,7 +2,7 @@
 addEvent("voice_local:onClientPlayerVoiceStart", true)
 addEvent("voice_local:onClientPlayerVoiceStop", true)
 addEvent("voice_local:updateSettings", true)
-addEvent("voice_local:setPrivateState", true)
+addEvent("voice_local:setVoiceMode", true)
 addEvent("voice_local:requestBroadcastRefresh", true)
 
 -- Only starts handling player voices after receiving the settings from the server
@@ -10,8 +10,8 @@ local initialWaiting = true
 
 local streamedPlayers = {}
 local localPlayerTalking = false
-local privateActive = false
-local privatePartner = nil
+local voiceMode = "general"
+local voicePartner = nil
 
 local sx, sy = guiGetScreenSize()
 
@@ -46,12 +46,14 @@ local function handlePreRender()
         local otherPlayerX, otherPlayerY, otherPlayerZ = getElementPosition(player)
         local realDistanceToPlayer = getDistanceBetweenPoints3D(localPlayerX, localPlayerY, localPlayerZ, otherPlayerX, otherPlayerY, otherPlayerZ)
         local playerVolume
-        if privateActive then
-            if player == privatePartner then
+        if voiceMode == "call" or voiceMode == "private" then
+            if player == voicePartner then
                 playerVolume = 1.0
             else
                 playerVolume = 0.0
             end
+        elseif voiceMode == "radio" then
+            playerVolume = 1.0
         else
             if (realDistanceToPlayer >= maxDistance) then
                 playerVolume = 0.0
@@ -74,8 +76,8 @@ local function handlePreRender()
         end
 
         if talking and (settings.showTalkingIcon.value == true)
-        and (privateActive or realDistanceToPlayer < maxDistance)
-        and (privateActive or isLineOfSightClear(cameraX, cameraY, cameraZ, otherPlayerX, otherPlayerY, otherPlayerZ, false, false, false, false, true, true, true, localPlayer)) then
+        and (voiceMode ~= "general" or realDistanceToPlayer < maxDistance)
+        and (voiceMode ~= "general" or isLineOfSightClear(cameraX, cameraY, cameraZ, otherPlayerX, otherPlayerY, otherPlayerZ, false, false, false, false, true, true, true, localPlayer)) then
             drawTalkingIcon(player, getDistanceBetweenPoints3D(cameraX, cameraY, cameraZ, otherPlayerX, otherPlayerY, otherPlayerZ))
         end
     end
@@ -113,7 +115,7 @@ addEventHandler("onClientElementStreamIn", root, function()
     if streamedPlayers[source] == nil then
         setSoundVolume(source, 0)
         streamedPlayers[source] = false
-        if not (privateActive and source == privatePartner) then
+        if not ((voiceMode == "call" or voiceMode == "private") and source == voicePartner) then
             triggerServerEvent("voice_local:addToPlayerBroadcast", localPlayer, source)
         end
     end
@@ -122,7 +124,7 @@ addEventHandler("onClientElementStreamOut", root, function()
     if source == localPlayer then return end
     if not (isElement(source) and getElementType(source) == "player") then return end
 
-    if privateActive and source == privatePartner then
+    if (voiceMode == "call" or voiceMode == "private") and source == voicePartner then
         return
     end
 
@@ -163,15 +165,15 @@ addEventHandler("voice_local:updateSettings", localPlayer, function(settingsFrom
     end
 end, false)
 
-addEventHandler("voice_local:setPrivateState", localPlayer, function(isActive, partner)
-    privateActive = isActive == true
-    privatePartner = (isElement(partner) and getElementType(partner) == "player") and partner or nil
+addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner)
+    voiceMode = mode or "general"
+    voicePartner = (isElement(partner) and getElementType(partner) == "player") and partner or nil
 
-    if privateActive and privatePartner then
-        if streamedPlayers[privatePartner] == nil then
-            streamedPlayers[privatePartner] = false
+    if (voiceMode == "call" or voiceMode == "private") and voicePartner then
+        if streamedPlayers[voicePartner] == nil then
+            streamedPlayers[voicePartner] = false
         end
-        setSoundVolume(privatePartner, settings.voiceSoundBoost.value or 1.0)
+        setSoundVolume(voicePartner, settings.voiceSoundBoost.value or 1.0)
     end
 end, false)
 

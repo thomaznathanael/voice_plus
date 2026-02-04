@@ -7,6 +7,11 @@ addEvent("voice_local:requestPrivateLeave", true)
 local broadcasts = {}
 local privateChannels = {}
 local playerPrivateChannel = {}
+local radioChannels = {}
+local playerRadioFreq = {}
+local callPartners = {}
+local updateRadioChannel
+local applyModeAfterCall
 
 for settingName, settingData in pairs(settings) do
     if settingData then
@@ -28,6 +33,27 @@ end)
 addEventHandler("onPlayerQuit", root, function()
     broadcasts[source] = nil
 
+    local callPartner = callPartners[source]
+    if callPartner then
+        callPartners[source] = nil
+        if isElement(callPartner) then
+            callPartners[callPartner] = nil
+            applyModeAfterCall(callPartner)
+            outputChatBox("Ligação encerrada (outro jogador saiu).", callPartner, 255, 120, 120)
+        end
+    end
+
+    local freq = playerRadioFreq[source]
+    if freq and radioChannels[freq] then
+        radioChannels[freq][source] = nil
+        playerRadioFreq[source] = nil
+        if next(radioChannels[freq]) == nil then
+            radioChannels[freq] = nil
+        else
+            updateRadioChannel(freq)
+        end
+    end
+
     local channelId = playerPrivateChannel[source]
     if channelId then
         local members = privateChannels[channelId] or {}
@@ -38,7 +64,7 @@ addEventHandler("onPlayerQuit", root, function()
             if member ~= source and isElement(member) then
                 playerPrivateChannel[member] = nil
                 setPlayerVoiceBroadcastTo(member, {member})
-                triggerClientEvent(member, "voice_local:setPrivateState", member, false, nil)
+                triggerClientEvent(member, "voice_local:setVoiceMode", member, "general", nil)
                 triggerClientEvent(member, "voice_local:requestBroadcastRefresh", member)
                 outputChatBox("Canal de voz privado encerrado (outro jogador saiu).", member, 255, 120, 120)
             end
@@ -81,11 +107,66 @@ local function updateBroadcastForPrivate(player)
     return true
 end
 
+local function getRadioMembersList(freq)
+    local membersMap = radioChannels[freq]
+    if not membersMap then
+        return nil
+    end
+    local list = {}
+    for member, _ in pairs(membersMap) do
+        if isElement(member) and not callPartners[member] and not playerPrivateChannel[member] then
+            table.insert(list, member)
+        end
+    end
+    if #list == 0 then
+        return nil
+    end
+    return list
+end
+
+local function updateBroadcastForRadio(player)
+    local freq = playerRadioFreq[player]
+    if not freq then
+        return false
+    end
+    local list = getRadioMembersList(freq)
+    if not list then
+        return false
+    end
+    broadcasts[player] = list
+    setPlayerVoiceBroadcastTo(player, list)
+    return true
+end
+
+local function updateBroadcastForCall(player)
+    local partner = callPartners[player]
+    if not partner then
+        return false
+    end
+    local list = {player, partner}
+    broadcasts[player] = list
+    setPlayerVoiceBroadcastTo(player, list)
+    return true
+end
+
+local function updateBroadcastForVoice(player)
+    if updateBroadcastForCall(player) then
+        return true
+    end
+    if updateBroadcastForPrivate(player) then
+        return true
+    end
+    if updateBroadcastForRadio(player) then
+        return true
+    end
+    return false
+end
+
 local function resetPlayerToGeneral(player)
     playerPrivateChannel[player] = nil
     broadcasts[player] = {player}
     setPlayerVoiceBroadcastTo(player, {player})
-    triggerClientEvent(player, "voice_local:setPrivateState", player, false, nil)
+    triggerClientEvent(player, "voice_local:setVoiceMode", player, "general", nil)
     triggerClientEvent(player, "voice_local:requestBroadcastRefresh", player)
 end
 
@@ -93,7 +174,7 @@ addEventHandler("voice_local:setPlayerBroadcast", root, function(players)
     if not client then return end
     if type(players) ~= "table" then return end
 
-    if updateBroadcastForPrivate(client) then
+    if updateBroadcastForVoice(client) then
         return
     end
 
@@ -115,7 +196,7 @@ addEventHandler("voice_local:addToPlayerBroadcast", root, function(player)
     if not client then return end
     if not (isElement(player) and getElementType(player) == "player") then return end
 
-    if updateBroadcastForPrivate(client) then
+    if updateBroadcastForVoice(client) then
         return
     end
 
@@ -143,7 +224,7 @@ addEventHandler("voice_local:removeFromPlayerBroadcast", root, function(player)
     if not client then return end
     if not (isElement(player) and getElementType(player) == "player") then return end
 
-    if updateBroadcastForPrivate(client) then
+    if updateBroadcastForVoice(client) then
         return
     end
 
@@ -197,8 +278,8 @@ local function setPrivateChannel(initiator, target, channelId)
     setPlayerVoiceBroadcastTo(initiator, privateChannels[channelId])
     setPlayerVoiceBroadcastTo(target, privateChannels[channelId])
 
-    triggerClientEvent(initiator, "voice_local:setPrivateState", initiator, true, target)
-    triggerClientEvent(target, "voice_local:setPrivateState", target, true, initiator)
+    triggerClientEvent(initiator, "voice_local:setVoiceMode", initiator, "private", target)
+    triggerClientEvent(target, "voice_local:setVoiceMode", target, "private", initiator)
 
     outputChatBox(("Canal de voz privado %d iniciado com %s."):format(channelId, getPlayerName(target)), initiator, 120, 255, 120)
     outputChatBox(("Canal de voz privado %d iniciado com %s."):format(channelId, getPlayerName(initiator)), target, 120, 255, 120)
@@ -216,7 +297,15 @@ local function leavePrivateChannel(player)
 
     for _, member in pairs(members) do
         if isElement(member) then
-            resetPlayerToGeneral(member)
+            if callPartners[member] then
+                updateBroadcastForCall(member)
+                triggerClientEvent(member, "voice_local:setVoiceMode", member, "call", callPartners[member])
+            elseif playerRadioFreq[member] then
+                updateRadioChannel(playerRadioFreq[member])
+                triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", nil)
+            else
+                resetPlayerToGeneral(member)
+            end
             outputChatBox("Canal de voz privado encerrado.", member, 255, 120, 120)
         end
     end
@@ -226,6 +315,146 @@ addEventHandler("voice_local:requestPrivateLeave", root, function()
     if not client then return end
     leavePrivateChannel(client)
 end)
+
+updateRadioChannel = function(freq)
+    local list = getRadioMembersList(freq)
+    if not list then
+        radioChannels[freq] = nil
+        return
+    end
+
+    for _, member in ipairs(list) do
+        if not callPartners[member] and not playerPrivateChannel[member] then
+            broadcasts[member] = list
+            setPlayerVoiceBroadcastTo(member, list)
+            triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", nil)
+        end
+    end
+end
+
+local function joinRadio(player, freq)
+    local current = playerRadioFreq[player]
+    if current == freq then
+        outputChatBox(("Você já está na frequência %d."):format(freq), player, 255, 200, 120)
+        return
+    end
+
+    if current and radioChannels[current] then
+        radioChannels[current][player] = nil
+        if next(radioChannels[current]) == nil then
+            radioChannels[current] = nil
+        else
+            updateRadioChannel(current)
+        end
+    end
+
+    if not radioChannels[freq] then
+        radioChannels[freq] = {}
+    end
+    radioChannels[freq][player] = true
+    playerRadioFreq[player] = freq
+
+    updateRadioChannel(freq)
+
+    outputChatBox(("Você entrou na frequência %d."):format(freq), player, 120, 255, 120)
+end
+
+local function leaveRadio(player)
+    local current = playerRadioFreq[player]
+    if not current then
+        outputChatBox("Você não está em nenhuma frequência.", player, 255, 200, 120)
+        return
+    end
+
+    if radioChannels[current] then
+        radioChannels[current][player] = nil
+        if next(radioChannels[current]) == nil then
+            radioChannels[current] = nil
+        else
+            updateRadioChannel(current)
+        end
+    end
+    playerRadioFreq[player] = nil
+
+    if not callPartners[player] and not playerPrivateChannel[player] then
+        resetPlayerToGeneral(player)
+    end
+
+    outputChatBox("Você saiu da frequência.", player, 255, 120, 120)
+end
+
+applyModeAfterCall = function(player)
+    if not isElement(player) then return end
+
+    if playerPrivateChannel[player] then
+        updateBroadcastForPrivate(player)
+        local channelId = playerPrivateChannel[player]
+        local members = privateChannels[channelId] or {}
+        local partner = nil
+        for _, member in pairs(members) do
+            if member ~= player then
+                partner = member
+                break
+            end
+        end
+        triggerClientEvent(player, "voice_local:setVoiceMode", player, "private", partner)
+        return
+    end
+
+    if playerRadioFreq[player] then
+        updateRadioChannel(playerRadioFreq[player])
+        triggerClientEvent(player, "voice_local:setVoiceMode", player, "radio", nil)
+        return
+    end
+
+    resetPlayerToGeneral(player)
+end
+
+local function startCall(player, target)
+    if callPartners[player] then
+        outputChatBox("Você já está em ligação.", player, 255, 120, 120)
+        return
+    end
+    if callPartners[target] then
+        outputChatBox("Jogador está em ligação.", player, 255, 120, 120)
+        return
+    end
+
+    callPartners[player] = target
+    callPartners[target] = player
+
+    local list = {player, target}
+    broadcasts[player] = list
+    broadcasts[target] = list
+    setPlayerVoiceBroadcastTo(player, list)
+    setPlayerVoiceBroadcastTo(target, list)
+
+    triggerClientEvent(player, "voice_local:setVoiceMode", player, "call", target)
+    triggerClientEvent(target, "voice_local:setVoiceMode", target, "call", player)
+
+    outputChatBox(("Ligação iniciada com %s."):format(getPlayerName(target)), player, 120, 255, 120)
+    outputChatBox(("Ligação iniciada com %s."):format(getPlayerName(player)), target, 120, 255, 120)
+end
+
+local function hangup(player)
+    local partner = callPartners[player]
+    if not partner then
+        outputChatBox("Você não está em ligação.", player, 255, 120, 120)
+        return
+    end
+
+    callPartners[player] = nil
+    if isElement(partner) then
+        callPartners[partner] = nil
+    end
+
+    applyModeAfterCall(player)
+    if isElement(partner) then
+        applyModeAfterCall(partner)
+        outputChatBox("Ligação encerrada.", partner, 255, 120, 120)
+    end
+    outputChatBox("Ligação encerrada.", player, 255, 120, 120)
+end
 
 addCommandHandler("vpriv", function(player, _, targetCharId, channelIdRaw)
     if not targetCharId or not channelIdRaw then
@@ -255,6 +484,51 @@ end)
 
 addCommandHandler("vleave", function(player)
     leavePrivateChannel(player)
+end)
+
+addCommandHandler("radio", function(player, _, freqRaw)
+    if not freqRaw then
+        outputChatBox("Uso: /radio <freq> ou /radio off", player, 255, 200, 120)
+        return
+    end
+
+    local freqText = tostring(freqRaw):lower()
+    if freqText == "off" or freqText == "0" then
+        leaveRadio(player)
+        return
+    end
+
+    local freq = tonumber(freqRaw)
+    if not freq then
+        outputChatBox("Frequência inválida. Use um número.", player, 255, 120, 120)
+        return
+    end
+
+    joinRadio(player, freq)
+end)
+
+addCommandHandler("call", function(player, _, targetCharId)
+    if not targetCharId then
+        outputChatBox("Uso: /call <char:id>", player, 255, 200, 120)
+        return
+    end
+
+    local target = findPlayerByCharId(targetCharId)
+    if not target or not isElement(target) then
+        outputChatBox("Jogador não encontrado.", player, 255, 120, 120)
+        return
+    end
+
+    if target == player then
+        outputChatBox("Você não pode ligar para você mesmo.", player, 255, 120, 120)
+        return
+    end
+
+    startCall(player, target)
+end)
+
+addCommandHandler("hangup", function(player)
+    hangup(player)
 end)
 
 addEventHandler("onPlayerVoiceStart", root, function()
