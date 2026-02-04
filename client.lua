@@ -17,6 +17,7 @@ local voiceMode = "general"
 local voicePartner = nil
 local radioType = nil
 local radioFreq = nil
+local radioTxActive = false
 
 local sx, sy = guiGetScreenSize()
 
@@ -112,7 +113,8 @@ local function setRadioTxState(state)
     if voiceMode ~= "radio" then
         return
     end
-    triggerServerEvent("voice_local:setRadioTx", localPlayer, state)
+    radioTxActive = state == true
+    triggerServerEvent("voice_local:setRadioTx", localPlayer, radioTxActive)
 end
 
 addEventHandler("onClientResourceStart", resourceRoot, function()
@@ -125,10 +127,7 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
     triggerServerEvent("voice_local:setPlayerBroadcast", localPlayer, streamedPlayers)
 
     bindKey("backslash", "down", function()
-        setRadioTxState(true)
-    end)
-    bindKey("backslash", "up", function()
-        setRadioTxState(false)
+        setRadioTxState(not radioTxActive)
     end)
 end, false)
 
@@ -203,7 +202,6 @@ end, false)
 
 addEventHandler("onClientResourceStop", resourceRoot, function()
     unbindKey("backslash", "down")
-    unbindKey("backslash", "up")
 end)
 
 addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner, freq)
@@ -216,6 +214,8 @@ addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner,
     elseif voiceMode ~= "radio" then
         radioType = nil
         radioFreq = nil
+        radioTxActive = false
+        setRadioTxState(false)
     end
 
     if (voiceMode == "call" or voiceMode == "private") and voicePartner then
