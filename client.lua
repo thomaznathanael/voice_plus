@@ -242,7 +242,7 @@ addEventHandler("voice_local:playRadioRogerNearby", root, function(sourcePlayer)
     local localX, localY, localZ = getElementPosition(localPlayer)
     local sourceX, sourceY, sourceZ = getElementPosition(sourcePlayer)
     local distance = getDistanceBetweenPoints3D(localX, localY, localZ, sourceX, sourceY, sourceZ)
-    local volume = computeDistanceVolume(distance, maxDistance) * 0.2
+    local volume = computeDistanceVolume(distance, maxDistance) * 0.1
     if volume <= 0.0 then
         return
     end
