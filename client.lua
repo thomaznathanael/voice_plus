@@ -210,7 +210,7 @@ addEventHandler("voice_local:requestBroadcastRefresh", localPlayer, function()
     triggerServerEvent("voice_local:setPlayerBroadcast", localPlayer, streamedPlayers)
 end, false)
 
-addEventHandler("voice_local:playRadioRoger", root, function()
+addEventHandler("voice_local:playRadioRoger", root, function(sourcePlayer)
     if voiceMode ~= "radio" then
         return
     end
@@ -220,7 +220,11 @@ addEventHandler("voice_local:playRadioRoger", root, function()
     end
     local sound = playSound(soundPath)
     if sound then
-        setSoundVolume(sound, 0.6)
+        local volume = 0.6
+        if isElement(sourcePlayer) and sourcePlayer ~= localPlayer then
+            volume = 0.5
+        end
+        setSoundVolume(sound, volume)
     end
 end)
 
@@ -242,7 +246,7 @@ addEventHandler("voice_local:playRadioRogerNearby", root, function(sourcePlayer)
     local localX, localY, localZ = getElementPosition(localPlayer)
     local sourceX, sourceY, sourceZ = getElementPosition(sourcePlayer)
     local distance = getDistanceBetweenPoints3D(localX, localY, localZ, sourceX, sourceY, sourceZ)
-    local volume = computeDistanceVolume(distance, maxDistance)
+    local volume = computeDistanceVolume(distance, maxDistance) * 0.8
     if volume <= 0.0 then
         return
     end
