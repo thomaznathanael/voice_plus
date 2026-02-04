@@ -10,6 +10,7 @@ local privateChannels = {}
 local playerPrivateChannel = {}
 local radioChannels = {}
 local playerRadioFreq = {}
+local playerRadioType = {}
 local callPartners = {}
 local updateRadioChannel
 local applyModeAfterCall
@@ -45,15 +46,20 @@ addEventHandler("onPlayerQuit", root, function()
     end
 
     local freq = playerRadioFreq[source]
-    if freq and radioChannels[freq] then
-        radioChannels[freq][source] = nil
-        playerRadioFreq[source] = nil
-        if next(radioChannels[freq]) == nil then
-            radioChannels[freq] = nil
-        else
-            updateRadioChannel(freq)
+    local rType = playerRadioType[source]
+    if freq and rType then
+        local key = ("%s:%d"):format(rType, freq)
+        if radioChannels[key] then
+            radioChannels[key][source] = nil
+            if next(radioChannels[key]) == nil then
+                radioChannels[key] = nil
+            else
+                updateRadioChannel(freq, rType)
+            end
         end
     end
+    playerRadioFreq[source] = nil
+    playerRadioType[source] = nil
 
     local channelId = playerPrivateChannel[source]
     if channelId then
@@ -94,7 +100,8 @@ end
 
 local function areInSameRadio(player, otherPlayer)
     local freq = playerRadioFreq[player]
-    return freq and playerRadioFreq[otherPlayer] == freq
+    local rType = playerRadioType[player]
+    return freq and rType and playerRadioFreq[otherPlayer] == freq and playerRadioType[otherPlayer] == rType
 end
 
 local function shouldBlockRadioBroadcast(speaker, listener)
@@ -111,9 +118,11 @@ local function shouldBlockRadioBroadcast(speaker, listener)
     end
 
     local speakerFreq = playerRadioFreq[speaker]
+    local speakerType = playerRadioType[speaker]
     local listenerFreq = playerRadioFreq[listener]
+    local listenerType = playerRadioType[listener]
     if speakerFreq or listenerFreq then
-        return not (speakerFreq and listenerFreq and speakerFreq == listenerFreq)
+        return not (speakerFreq and listenerFreq and speakerType and listenerType and speakerFreq == listenerFreq and speakerType == listenerType)
     end
 
     return false
@@ -175,8 +184,8 @@ local function addPlayerToNearbyBroadcasts(player)
     end
 end
 
-local function getRadioMembersList(freq)
-    local membersMap = radioChannels[freq]
+local function getRadioMembersList(freq, rType)
+    local membersMap = radioChannels[("%s:%d"):format(rType or "", freq or 0)]
     if not membersMap then
         return nil
     end
@@ -197,7 +206,7 @@ local function updateBroadcastForRadio(player)
     if not freq then
         return false
     end
-    local list = getRadioMembersList(freq)
+    local list = getRadioMembersList(freq, playerRadioType[player])
     if not list then
         return false
     end
@@ -378,8 +387,8 @@ local function leavePrivateChannel(player)
                 updateBroadcastForCall(member)
                 triggerClientEvent(member, "voice_local:setVoiceMode", member, "call", callPartners[member])
             elseif playerRadioFreq[member] then
-                updateRadioChannel(playerRadioFreq[member])
-                triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", nil)
+                updateRadioChannel(playerRadioFreq[member], playerRadioType[member])
+                triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", playerRadioType[member])
             else
                 resetPlayerToGeneral(member)
             end
@@ -393,10 +402,10 @@ addEventHandler("voice_local:requestPrivateLeave", root, function()
     leavePrivateChannel(client)
 end)
 
-updateRadioChannel = function(freq)
-    local list = getRadioMembersList(freq)
+updateRadioChannel = function(freq, rType)
+    local list = getRadioMembersList(freq, rType)
     if not list then
-        radioChannels[freq] = nil
+        radioChannels[("%s:%d"):format(rType or "", freq or 0)] = nil
         return
     end
 
@@ -404,37 +413,45 @@ updateRadioChannel = function(freq)
         if not callPartners[member] and not playerPrivateChannel[member] then
             broadcasts[member] = list
             setPlayerVoiceBroadcastTo(member, list)
-            triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", nil)
+            triggerClientEvent(member, "voice_local:setVoiceMode", member, "radio", rType)
         end
     end
 end
 
-local function joinRadio(player, freq)
+local function joinRadio(player, freq, rType)
     local current = playerRadioFreq[player]
-    if current == freq then
-        outputChatBox(("Você já está na frequência %d."):format(freq), player, 255, 200, 120)
+    local currentType = playerRadioType[player]
+    if current == freq and currentType == rType then
+        outputChatBox(("Você já está na %s %d."):format(rType, freq), player, 255, 200, 120)
         return
     end
 
-    if current and radioChannels[current] then
-        radioChannels[current][player] = nil
-        if next(radioChannels[current]) == nil then
-            radioChannels[current] = nil
+    if current and currentType then
+        local currentKey = ("%s:%d"):format(currentType, current)
+        if radioChannels[currentKey] then
+            radioChannels[currentKey][player] = nil
+            if next(radioChannels[currentKey]) == nil then
+                radioChannels[currentKey] = nil
+            else
+                updateRadioChannel(current, currentType)
+            end
         else
-            updateRadioChannel(current)
+            updateRadioChannel(current, currentType)
         end
     end
 
-    if not radioChannels[freq] then
-        radioChannels[freq] = {}
+    local key = ("%s:%d"):format(rType, freq)
+    if not radioChannels[key] then
+        radioChannels[key] = {}
     end
-    radioChannels[freq][player] = true
+    radioChannels[key][player] = true
     playerRadioFreq[player] = freq
+    playerRadioType[player] = rType
 
-    updateRadioChannel(freq)
+    updateRadioChannel(freq, rType)
     removePlayerFromOtherBroadcasts(player)
 
-    outputChatBox(("Você entrou na frequência %d."):format(freq), player, 120, 255, 120)
+    outputChatBox(("Você entrou na %s %d."):format(rType, freq), player, 120, 255, 120)
 end
 
 local function leaveRadio(player)
@@ -444,15 +461,18 @@ local function leaveRadio(player)
         return
     end
 
-    if radioChannels[current] then
-        radioChannels[current][player] = nil
-        if next(radioChannels[current]) == nil then
-            radioChannels[current] = nil
+    local currentType = playerRadioType[player]
+    local key = currentType and ("%s:%d"):format(currentType, current) or nil
+    if key and radioChannels[key] then
+        radioChannels[key][player] = nil
+        if next(radioChannels[key]) == nil then
+            radioChannels[key] = nil
         else
-            updateRadioChannel(current)
+            updateRadioChannel(current, currentType)
         end
     end
     playerRadioFreq[player] = nil
+    playerRadioType[player] = nil
 
     if not callPartners[player] and not playerPrivateChannel[player] then
         resetPlayerToGeneral(player)
@@ -481,8 +501,8 @@ applyModeAfterCall = function(player)
     end
 
     if playerRadioFreq[player] then
-        updateRadioChannel(playerRadioFreq[player])
-        triggerClientEvent(player, "voice_local:setVoiceMode", player, "radio", nil)
+        updateRadioChannel(playerRadioFreq[player], playerRadioType[player])
+        triggerClientEvent(player, "voice_local:setVoiceMode", player, "radio", playerRadioType[player])
         return
     end
 
@@ -565,15 +585,25 @@ addCommandHandler("vleave", function(player)
     leavePrivateChannel(player)
 end)
 
-addCommandHandler("radio", function(player, _, freqRaw)
-    if not freqRaw then
-        outputChatBox("Uso: /radio <freq> ou /radio off", player, 255, 200, 120)
+addCommandHandler("radio", function(player, _, radioTypeRaw, freqRaw)
+    if not radioTypeRaw then
+        outputChatBox("Uso: /radio <police|faction> <freq> ou /radio off", player, 255, 200, 120)
         return
     end
 
-    local freqText = tostring(freqRaw):lower()
-    if freqText == "off" or freqText == "0" then
+    local radioType = tostring(radioTypeRaw):lower()
+    if radioType == "off" or radioType == "0" then
         leaveRadio(player)
+        return
+    end
+
+    if radioType ~= "police" and radioType ~= "faction" then
+        outputChatBox("Tipo inválido. Use police ou faction.", player, 255, 120, 120)
+        return
+    end
+
+    if not freqRaw then
+        outputChatBox("Uso: /radio <police|faction> <freq>", player, 255, 200, 120)
         return
     end
 
@@ -583,7 +613,7 @@ addCommandHandler("radio", function(player, _, freqRaw)
         return
     end
 
-    joinRadio(player, freq)
+    joinRadio(player, freq, radioType)
 end)
 
 addCommandHandler("call", function(player, _, targetCharId)
@@ -626,8 +656,9 @@ addEventHandler("onPlayerVoiceStop", root, function()
     triggerClientEvent(broadcasts[source], "voice_local:onClientPlayerVoiceStop", source, source)
 
     local freq = playerRadioFreq[source]
-    if freq and not callPartners[source] and not playerPrivateChannel[source] then
-        local list = getRadioMembersList(freq)
+    local rType = playerRadioType[source]
+    if freq and rType and not callPartners[source] and not playerPrivateChannel[source] then
+        local list = getRadioMembersList(freq, rType)
         if list then
             triggerClientEvent(list, "voice_local:playRadioRoger", source, source)
         end

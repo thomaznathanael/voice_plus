@@ -13,6 +13,7 @@ local streamedPlayers = {}
 local localPlayerTalking = false
 local voiceMode = "general"
 local voicePartner = nil
+local radioType = nil
 
 local sx, sy = guiGetScreenSize()
 
@@ -170,6 +171,12 @@ addEventHandler("voice_local:setVoiceMode", localPlayer, function(mode, partner)
     voiceMode = mode or "general"
     voicePartner = (isElement(partner) and getElementType(partner) == "player") and partner or nil
 
+    if voiceMode == "radio" and type(partner) == "string" then
+        radioType = partner
+    elseif voiceMode ~= "radio" then
+        radioType = nil
+    end
+
     if (voiceMode == "call" or voiceMode == "private") and voicePartner then
         if streamedPlayers[voicePartner] == nil then
             streamedPlayers[voicePartner] = false
@@ -186,7 +193,11 @@ addEventHandler("voice_local:playRadioRoger", root, function()
     if voiceMode ~= "radio" then
         return
     end
-    local sound = playSound("roger.mp3")
+    local soundPath = "faction-roger.mp3"
+    if radioType == "police" then
+        soundPath = "police-roger.mp3"
+    end
+    local sound = playSound(soundPath)
     if sound then
         setSoundVolume(sound, 0.6)
     end

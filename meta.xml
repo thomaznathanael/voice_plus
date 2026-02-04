@@ -10,7 +10,8 @@
 	</settings>
 
 	<file src="icon.png"/>
-	<file src="roger.mp3"/>
+	<file src="faction-roger.mp3"/>
+	<file src="police-roger.mp3"/>
 
 	<script src="shared.lua" type="shared"/>
 	<script src="client.lua" type="client"/>
