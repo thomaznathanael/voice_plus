@@ -95,9 +95,9 @@ exports.voice_plus:voice_plus_radio_off(player)
 exports.voice_plus:voice_plus_set_radio_tx(player, true)
 exports.voice_plus:voice_plus_private(player, targetCharId, 123)
 exports.voice_plus:voice_plus_private_off(player)
-```
+``'
 
-## Observacoes
+### Observacoes
 
 - `player` deve ser o elemento do jogador.
 - `charId` e o `char:id` do player alvo.
