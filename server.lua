@@ -13,6 +13,10 @@ addEvent("voice_plus:radio_off", true)
 addEvent("voice_plus:set_radio_tx", true)
 addEvent("voice_plus:private", true)
 addEvent("voice_plus:private_off", true)
+addEvent("voice_plus:onPlayerTxStart")
+addEvent("voice_plus:onPlayerTxStop")
+addEvent("voice_plus:onPlayerRxStart")
+addEvent("voice_plus:onPlayerRxStop")
 
 -- Forward declarations for exports
 local exportCall
@@ -703,12 +707,24 @@ addEventHandler("onPlayerVoiceStart", root, function()
         cancelEvent()
         return
     end
+    triggerEvent("voice_plus:onPlayerTxStart", source, source)
+    for _, receiver in pairs(broadcasts[source]) do
+        if isElement(receiver) and receiver ~= source then
+            triggerEvent("voice_plus:onPlayerRxStart", receiver, source)
+        end
+    end
     triggerClientEvent(broadcasts[source], "voice_local:onClientPlayerVoiceStart", source, source)
 end)
 
 addEventHandler("onPlayerVoiceStop", root, function()
     if not broadcasts[source] then
         return
+    end
+    triggerEvent("voice_plus:onPlayerTxStop", source, source)
+    for _, receiver in pairs(broadcasts[source]) do
+        if isElement(receiver) and receiver ~= source then
+            triggerEvent("voice_plus:onPlayerRxStop", receiver, source)
+        end
     end
     triggerClientEvent(broadcasts[source], "voice_local:onClientPlayerVoiceStop", source, source)
 

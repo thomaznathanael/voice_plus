@@ -6,6 +6,10 @@ addEvent("voice_local:setVoiceMode", true)
 addEvent("voice_local:requestBroadcastRefresh", true)
 addEvent("voice_local:playRadioRoger", true)
 addEvent("voice_local:playRadioRogerNearby", true)
+addEvent("voice_plus:onClientTxStart")
+addEvent("voice_plus:onClientTxStop")
+addEvent("voice_plus:onClientRxStart")
+addEvent("voice_plus:onClientRxStop")
 
 -- Only starts handling player voices after receiving the settings from the server
 local initialWaiting = true
@@ -179,8 +183,13 @@ addEventHandler("voice_local:onClientPlayerVoiceStart", root, function(player)
 
     if player == localPlayer then
         localPlayerTalking = true
+        triggerEvent("voice_plus:onClientTxStart", localPlayer, voiceMode, voicePartner, radioType, radioFreq, radioTxActive == true)
     elseif streamedPlayers[player] ~= nil then
         streamedPlayers[player] = true
+        local otherType = getElementData(player, "voice:radioType")
+        local otherFreq = getElementData(player, "voice:radioFreq")
+        local otherTx = getElementData(player, "voice:radioTx")
+        triggerEvent("voice_plus:onClientRxStart", localPlayer, player, otherType, tonumber(otherFreq), otherTx == true)
     end
 end)
 addEventHandler("voice_local:onClientPlayerVoiceStop", root, function(player)
@@ -188,8 +197,13 @@ addEventHandler("voice_local:onClientPlayerVoiceStop", root, function(player)
 
     if player == localPlayer then
         localPlayerTalking = false
+        triggerEvent("voice_plus:onClientTxStop", localPlayer, voiceMode, voicePartner, radioType, radioFreq, radioTxActive == true)
     elseif streamedPlayers[player] ~= nil then
         streamedPlayers[player] = false
+        local otherType = getElementData(player, "voice:radioType")
+        local otherFreq = getElementData(player, "voice:radioFreq")
+        local otherTx = getElementData(player, "voice:radioTx")
+        triggerEvent("voice_plus:onClientRxStop", localPlayer, player, otherType, tonumber(otherFreq), otherTx == true)
     end
 end)
 
