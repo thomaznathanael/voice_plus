@@ -60,10 +60,21 @@ end)
 addEventHandler("voice_plus:onClientTxStop", root, function(mode, partner, radioType, radioFreq, radioTxActive)
 end)
 
+-- local player comecou a receber voz de outro jogador
+addEventHandler("voice_plus:onClientRxStart", root, function(mode, partner, radioType, radioFreq, volume)
+    local speaker = source
+end)
+
+-- local player parou de receber voz de outro jogador
+addEventHandler("voice_plus:onClientRxStop", root, function(mode, partner, radioType, radioFreq, volume)
+    local speaker = source
+end)
+
 ```
 
 **Parametros (client-side):**
 - `voice_plus:onClientTxStart` / `voice_plus:onClientTxStop`: `mode` = `general|call|private|radio`, `partner` = player em call/private (ou `nil`), `radioType` = `police|faction` (ou `nil`), `radioFreq` = numero (ou `nil`), `radioTxActive` = `true|false`.
+- `voice_plus:onClientRxStart` / `voice_plus:onClientRxStop`: `source` = jogador que esta sendo ouvido, `mode` = `general|call|private|radio`, `partner` = player em call/private (ou `nil`), `radioType` = `police|faction` (ou `nil`), `radioFreq` = numero (ou `nil`), `volume` = numero (com boost, pode ser > 1.0).
 
 ## Exports Server-Side
 

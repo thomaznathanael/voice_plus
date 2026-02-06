@@ -8,11 +8,14 @@ addEvent("voice_local:playRadioRoger", true)
 addEvent("voice_local:playRadioRogerNearby", true)
 addEvent("voice_plus:onClientTxStart")
 addEvent("voice_plus:onClientTxStop")
+addEvent("voice_plus:onClientRxStart")
+addEvent("voice_plus:onClientRxStop")
 
 -- Only starts handling player voices after receiving the settings from the server
 local initialWaiting = true
 
 local streamedPlayers = {}
+local receivingPlayers = {}
 local localPlayerTalking = false
 local voiceMode = "general"
 local voicePartner = nil
@@ -89,6 +92,17 @@ local function handlePreRender()
 
         setSoundVolume(player, playerVolume)
 
+        local isReceiving = (talking == true) and (playerVolume > 0)
+        if isReceiving then
+            if receivingPlayers[player] ~= true then
+                receivingPlayers[player] = true
+                triggerEvent("voice_plus:onClientRxStart", player, voiceMode, voicePartner, radioType, radioFreq, playerVolume)
+            end
+        elseif receivingPlayers[player] ~= nil then
+            receivingPlayers[player] = nil
+            triggerEvent("voice_plus:onClientRxStop", player, voiceMode, voicePartner, radioType, radioFreq, 0.0)
+        end
+
         if DEBUG_MODE then
             dxDrawRectangle(20, debugY - 5, 300, 25, tocolor(0, 0, 0, 200))
             dxDrawText(("%s | Distance: %.2f | Voice Volume: %.2f"):format(getPlayerName(player), realDistanceToPlayer, playerVolume), 30, debugY)
@@ -139,6 +153,10 @@ end, false)
 -- Handle remote/other player quit
 addEventHandler("onClientPlayerQuit", root, function()
     if streamedPlayers[source] ~= nil then
+        if receivingPlayers[source] ~= nil then
+            receivingPlayers[source] = nil
+            triggerEvent("voice_plus:onClientRxStop", source, voiceMode, voicePartner, radioType, radioFreq, 0.0)
+        end
         streamedPlayers[source] = nil
         triggerServerEvent("voice_local:removeFromPlayerBroadcast", localPlayer, source)
     end
@@ -170,6 +188,10 @@ addEventHandler("onClientElementStreamOut", root, function()
 
     if streamedPlayers[source] ~= nil then
         setSoundVolume(source, 0)
+        if receivingPlayers[source] ~= nil then
+            receivingPlayers[source] = nil
+            triggerEvent("voice_plus:onClientRxStop", source, voiceMode, voicePartner, radioType, radioFreq, 0.0)
+        end
         streamedPlayers[source] = nil
         triggerServerEvent("voice_local:removeFromPlayerBroadcast", localPlayer, source)
     end
