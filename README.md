@@ -22,6 +22,9 @@ triggerEvent("voice_plus:radio_off", player)
 -- habilitar/desabilitar TX do radio
 triggerEvent("voice_plus:set_radio_tx", player, true)
 
+-- ajustar volume do radio (0-3)
+triggerEvent("voice_plus:set_radio_volume", player, 3)
+
 -- canal privado (char:id alvo, canal)
 triggerEvent("voice_plus:private", player, targetCharId, 123)
 
@@ -44,10 +47,16 @@ addEventHandler("voice_plus:onPlayerTxStop", root, function()
     local speaker = source
 end)
 
+-- quando o jogador altera o volume do radio (0-3)
+addEventHandler("voice_plus:onPlayerRadioVolumeChange", root, function(level)
+    local player = source
+end)
+
 ```
 
 **Parametros (server-side):**
 - `voice_plus:onPlayerTxStart` / `voice_plus:onPlayerTxStop`: `source` = jogador que esta transmitindo.
+- `voice_plus:onPlayerRadioVolumeChange`: `source` = jogador que alterou o volume, `level` = 0..3.
 
 ## Eventos Client-Side (emissao/recepcao)
 
@@ -70,11 +79,16 @@ addEventHandler("voice_plus:onClientRxStop", root, function(mode, partner, radio
     local speaker = source
 end)
 
+-- local player alterou o volume do radio (0-3)
+addEventHandler("voice_plus:onClientRadioVolumeChange", root, function(level, scale)
+end)
+
 ```
 
 **Parametros (client-side):**
 - `voice_plus:onClientTxStart` / `voice_plus:onClientTxStop`: `mode` = `general|call|private|radio`, `partner` = player em call/private (ou `nil`), `radioType` = `police|faction` (ou `nil`), `radioFreq` = numero (ou `nil`), `radioTxActive` = `true|false`.
 - `voice_plus:onClientRxStart` / `voice_plus:onClientRxStop`: `source` = jogador que esta sendo ouvido, `mode` = `general|call|private|radio`, `partner` = player em call/private (ou `nil`), `radioType` = `police|faction` (ou `nil`), `radioFreq` = numero (ou `nil`), `volume` = numero (com boost, pode ser > 1.0).
+- `voice_plus:onClientRadioVolumeChange`: `level` = 0..3, `scale` = multiplicador (0.0..1.0).
 
 ## Exports Server-Side
 
@@ -86,6 +100,7 @@ exports.voice_plus:voice_plus_hangup(player)
 exports.voice_plus:voice_plus_radio(player, "faction", 123)
 exports.voice_plus:voice_plus_radio_off(player)
 exports.voice_plus:voice_plus_set_radio_tx(player, true)
+exports.voice_plus:voice_plus_set_radio_volume(player, 3)
 exports.voice_plus:voice_plus_private(player, targetCharId, 123)
 exports.voice_plus:voice_plus_private_off(player)
 ``'

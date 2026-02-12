@@ -11,8 +11,10 @@
 
 	<file src="faction-roger.mp3"/>
 	<file src="police-roger.mp3"/>
+	<file src="vol.mp3"/>
 	<file src="ring.png"/>
 	<file src="ring-radio.png"/>
+	<file src="ring-telefone.png"/>
 
 	<script src="shared.lua" type="shared"/>
 	<script src="client.lua" type="client"/>
@@ -23,6 +25,7 @@
 	<export function="voice_plus_radio" type="server"/>
 	<export function="voice_plus_radio_off" type="server"/>
 	<export function="voice_plus_set_radio_tx" type="server"/>
+	<export function="voice_plus_set_radio_volume" type="server"/>
 	<export function="voice_plus_private" type="server"/>
 	<export function="voice_plus_private_off" type="server"/>
 </meta>
