@@ -2,6 +2,10 @@
 
 Este resource expoe **APIs server-side** para integracao com recursos de celular e walktalk, e emite eventos de TX/RX para integracao com outros resources.
 
+Descomente o:
+## -- outputChatBox
+no server.lua para obter as mensagens sobre o resource.
+
 ## Eventos Server-Side
 
 Use `triggerEvent` no server:
