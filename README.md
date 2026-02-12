@@ -29,9 +29,9 @@ O foco deste resource e permitir integracao limpa com outros sistemas, mantendo 
 
 ## Instalacao
 
-1. Coloque a pasta do resource em `resources/` (exemplo: `resources/[local]/voice_local`).
+1. Coloque a pasta do resource em `resources/` (exemplo: `resources/[local]/voice_plus`).
 2. Garanta que o `meta.xml` esteja junto de `client.lua`, `server.lua` e `shared.lua`.
-3. Inicie no servidor com `start voice_local` (ou nome da pasta que voce usar).
+3. Inicie no servidor com `start voice_plus` (ou nome da pasta que voce usar).
 4. Teste com dois jogadores para validar proximidade, chamada e radio.
 
 ## Configuracao
@@ -93,17 +93,17 @@ Regras importantes:
 ## API Server-Side (exports)
 
 Os mesmos controles acima estao disponiveis via export.
-Use o nome real do seu resource no prefixo (ex.: `voice_local`):
+Use o nome real do seu resource no prefixo (ex.: `voice_plus`):
 
 ```lua
-exports.voice_local:voice_plus_call(player, targetCharId)
-exports.voice_local:voice_plus_hangup(player)
-exports.voice_local:voice_plus_radio(player, "faction", 12)
-exports.voice_local:voice_plus_radio_off(player)
-exports.voice_local:voice_plus_set_radio_tx(player, true)
-exports.voice_local:voice_plus_set_radio_volume(player, 3)
-exports.voice_local:voice_plus_private(player, targetCharId, 5001)
-exports.voice_local:voice_plus_private_off(player)
+exports.voice_plus:voice_plus_call(player, targetCharId)
+exports.voice_plus:voice_plus_hangup(player)
+exports.voice_plus:voice_plus_radio(player, "faction", 12)
+exports.voice_plus:voice_plus_radio_off(player)
+exports.voice_plus:voice_plus_set_radio_tx(player, true)
+exports.voice_plus:voice_plus_set_radio_volume(player, 3)
+exports.voice_plus:voice_plus_private(player, targetCharId, 5001)
+exports.voice_plus:voice_plus_private_off(player)
 ```
 
 ## Eventos de Observabilidade (Server)
