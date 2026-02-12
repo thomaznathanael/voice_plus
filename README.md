@@ -1,22 +1,71 @@
-# Voice Plus - Integracao com Outros Resources
+# Voice Plus (MTA:SA)
 
-Este resource expoe **APIs server-side** para integracao com recursos de celular e walktalk, e emite eventos de TX/RX para integracao com outros resources.
+Sistema de voz local por proximidade com suporte a:
 
-Descomente o: **-- outputChatBox** no **server.lua** para obter as mensagens sobre o resource.
+- chamada 1:1 por `char:id`
+- radio por tipo/frequencia (`police` e `faction`)
+- canal de voz privado 1:1
+- API server-side para integrar com celular, walktalk e outros resources
+- eventos de observabilidade (TX/RX e volume)
 
-## Eventos Server-Side
+O foco deste resource e permitir integracao limpa com outros sistemas, mantendo a experiencia de voz no cliente.
 
-Use `triggerEvent` no server:
+## Recursos
+
+- Voz por distancia com atenuacao dinamica.
+- Modo `general`, `call`, `radio` e `private`.
+- Push-to-talk de radio por tecla (`F2`) para alternar transmissao.
+- Controle de volume de radio por jogador (`0..3`), com feedback sonoro.
+- Indicador visual 3D de quem esta falando (normal, telefone e radio).
+- Exports e eventos para controlar tudo por script.
+- Validacoes server-side para reduzir abuso de broadcast.
+
+## Requisitos
+
+- MTA:SA com voz habilitada no servidor (`<voice>` no `mtaserver.conf`).
+- Versao minima conforme `meta.xml`:
+  - `1.3.0-0.04570`
+- Seu gamemode precisa definir `char:id` nos jogadores para chamadas e canal privado.
+
+## Instalacao
+
+1. Coloque a pasta do resource em `resources/` (exemplo: `resources/[local]/voice_local`).
+2. Garanta que o `meta.xml` esteja junto de `client.lua`, `server.lua` e `shared.lua`.
+3. Inicie no servidor com `start voice_local` (ou nome da pasta que voce usar).
+4. Teste com dois jogadores para validar proximidade, chamada e radio.
+
+## Configuracao
+
+As configuracoes estao em `meta.xml`:
+
+```xml
+<setting name="*max_voice_distance" value="[25]"/>
+<setting name="*voice_sound_boost" value="[6]"/>
+<setting name="*show_talking_icon" value="[true]"/>
+```
+
+- `*max_voice_distance`: distancia maxima da voz local (modo geral).
+- `*voice_sound_boost`: ganho final aplicado no volume da voz.
+- `*show_talking_icon`: mostra/esconde o indicador visual de fala.
+
+## Controle no Cliente
+
+- `F2`: alterna o estado de TX do radio (`on/off`) quando o jogador estiver em modo radio.
+
+## API Server-Side (triggerEvent)
+
+Use estes eventos para integrar com outros resources:
 
 ```lua
--- iniciar ligacao (char:id)
-triggerEvent("voice_plus:call", player, charId)
+-- iniciar chamada por char:id
+triggerEvent("voice_plus:call", player, targetCharId)
 
--- finalizar ligacao
+-- encerrar chamada atual
 triggerEvent("voice_plus:hangup", player)
 
--- entrar no radio (police|faction, frequencia)
-triggerEvent("voice_plus:radio", player, "police", 123)
+-- entrar em radio (tipo + frequencia)
+triggerEvent("voice_plus:radio", player, "police", 190)
+triggerEvent("voice_plus:radio", player, "faction", 12)
 
 -- sair do radio
 triggerEvent("voice_plus:radio_off", player)
@@ -24,92 +73,107 @@ triggerEvent("voice_plus:radio_off", player)
 -- habilitar/desabilitar TX do radio
 triggerEvent("voice_plus:set_radio_tx", player, true)
 
--- ajustar volume do radio (0-3)
-triggerEvent("voice_plus:set_radio_volume", player, 3)
+-- definir volume do radio (0..3)
+triggerEvent("voice_plus:set_radio_volume", player, 2)
 
--- canal privado (char:id alvo, canal)
-triggerEvent("voice_plus:private", player, targetCharId, 123)
+-- iniciar canal privado por char:id alvo + id do canal
+triggerEvent("voice_plus:private", player, targetCharId, 5001)
 
 -- sair do canal privado
 triggerEvent("voice_plus:private_off", player)
 ```
 
-## Eventos Server-Side (emissao/recepcao)
+Regras importantes:
 
-Estes eventos sao disparados automaticamente **apenas quando a transmissao estiver em radio** (F2 ativo e no canal correto). Fala local nao dispara estes eventos.
+- `player` precisa ser elemento `player` valido.
+- `targetCharId` deve corresponder ao `char:id` de outro jogador.
+- `radioType` aceita apenas `police` ou `faction`.
+- `freq` e `channelId` sao numericos.
+
+## API Server-Side (exports)
+
+Os mesmos controles acima estao disponiveis via export.
+Use o nome real do seu resource no prefixo (ex.: `voice_local`):
 
 ```lua
--- quando um jogador comeca a transmitir
-addEventHandler("voice_plus:onPlayerTxStart", root, function()
-    local speaker = source
-end)
-
--- quando um jogador para de transmitir
-addEventHandler("voice_plus:onPlayerTxStop", root, function()
-    local speaker = source
-end)
-
--- quando o jogador altera o volume do radio (0-3)
-addEventHandler("voice_plus:onPlayerRadioVolumeChange", root, function(level)
-    local player = source
-end)
-
+exports.voice_local:voice_plus_call(player, targetCharId)
+exports.voice_local:voice_plus_hangup(player)
+exports.voice_local:voice_plus_radio(player, "faction", 12)
+exports.voice_local:voice_plus_radio_off(player)
+exports.voice_local:voice_plus_set_radio_tx(player, true)
+exports.voice_local:voice_plus_set_radio_volume(player, 3)
+exports.voice_local:voice_plus_private(player, targetCharId, 5001)
+exports.voice_local:voice_plus_private_off(player)
 ```
 
-**Parametros (server-side):**
-- `voice_plus:onPlayerTxStart` / `voice_plus:onPlayerTxStop`: `source` = jogador que esta transmitindo.
-- `voice_plus:onPlayerRadioVolumeChange`: `source` = jogador que alterou o volume, `level` = 0..3.
+## Eventos de Observabilidade (Server)
 
-## Eventos Client-Side (emissao/recepcao)
+Escute estes eventos para log, UI externa, analytics ou regras adicionais:
 
 ```lua
--- local player comecou a transmitir
+-- source = jogador que iniciou/finalizou TX
+addEventHandler("voice_plus:onPlayerTxStart", root, function(speaker)
+end)
+
+addEventHandler("voice_plus:onPlayerTxStop", root, function(speaker)
+end)
+
+-- source = jogador receptor, arg = speaker
+addEventHandler("voice_plus:onPlayerRxStart", root, function(speaker)
+end)
+
+addEventHandler("voice_plus:onPlayerRxStop", root, function(speaker)
+end)
+
+-- source = jogador que alterou o volume
+addEventHandler("voice_plus:onPlayerRadioVolumeChange", root, function(level)
+end)
+```
+
+## Eventos de Observabilidade (Client)
+
+```lua
+-- localPlayer iniciou/finalizou TX no contexto atual
 addEventHandler("voice_plus:onClientTxStart", root, function(mode, partner, radioType, radioFreq, radioTxActive)
 end)
 
--- local player parou de transmitir
 addEventHandler("voice_plus:onClientTxStop", root, function(mode, partner, radioType, radioFreq, radioTxActive)
 end)
 
--- local player comecou a receber voz de outro jogador
-addEventHandler("voice_plus:onClientRxStart", root, function(mode, partner, radioType, radioFreq, volume)
-    local speaker = source
+-- localPlayer iniciou/finalizou recepcao de voz via radio
+addEventHandler("voice_plus:onClientRxStart", root, function(speaker, radioType, radioFreq, speakerTxActive)
 end)
 
--- local player parou de receber voz de outro jogador
-addEventHandler("voice_plus:onClientRxStop", root, function(mode, partner, radioType, radioFreq, volume)
-    local speaker = source
+addEventHandler("voice_plus:onClientRxStop", root, function(speaker, radioType, radioFreq, speakerTxActive)
 end)
 
--- local player alterou o volume do radio (0-3)
+-- volume local de radio foi alterado
 addEventHandler("voice_plus:onClientRadioVolumeChange", root, function(level, scale)
 end)
-
 ```
 
-**Parametros (client-side):**
-- `voice_plus:onClientTxStart` / `voice_plus:onClientTxStop`: `mode` = `general|call|private|radio`, `partner` = player em call/private (ou `nil`), `radioType` = `police|faction` (ou `nil`), `radioFreq` = numero (ou `nil`), `radioTxActive` = `true|false`.
-- `voice_plus:onClientRxStart` / `voice_plus:onClientRxStop`: `source` = jogador que esta sendo ouvido, `mode` = `general|call|private|radio`, `partner` = player em call/private (ou `nil`), `radioType` = `police|faction` (ou `nil`), `radioFreq` = numero (ou `nil`), `volume` = numero (com boost, pode ser > 1.0).
-- `voice_plus:onClientRadioVolumeChange`: `level` = 0..3, `scale` = multiplicador (0.0..1.0).
+## Prioridade de Modos
 
-## Exports Server-Side
+A logica server-side segue a seguinte prioridade de broadcast:
 
-Use `exports` no server:
+1. `call`
+2. `private`
+3. `radio` (quando TX estiver ativo)
+4. `general`
 
-```lua
-exports.voice_plus:voice_plus_call(player, charId)
-exports.voice_plus:voice_plus_hangup(player)
-exports.voice_plus:voice_plus_radio(player, "faction", 123)
-exports.voice_plus:voice_plus_radio_off(player)
-exports.voice_plus:voice_plus_set_radio_tx(player, true)
-exports.voice_plus:voice_plus_set_radio_volume(player, 3)
-exports.voice_plus:voice_plus_private(player, targetCharId, 123)
-exports.voice_plus:voice_plus_private_off(player)
-``'
+Isso evita conflito entre modos e mantem o comportamento consistente.
 
-## Observacoes
+## Debug
 
-- `player` deve ser o elemento do jogador.
-- `charId` e o `char:id` do player alvo.
-- `radio` aceita apenas `"police"` ou `"faction"`.
-- O canal privado agora esta exposto via `voice_plus:private` e `voice_plus:private_off`.
+Se quiser mensagens de depuracao em chat, descomente as linhas `outputChatBox` no `server.lua`.
+
+## Estrutura do Resource
+
+- `meta.xml`: declaracoes, arquivos, settings e exports.
+- `shared.lua`: chaves de configuracao compartilhadas.
+- `server.lua`: controle de broadcast/modos/eventos/exports.
+- `client.lua`: volume local, HUD/ring, teclas e eventos client-side.
+
+## Licenca
+
+Nao ha licenca declarada neste repositorio. Se for publicar no GitHub, recomendo adicionar um arquivo `LICENSE`.
