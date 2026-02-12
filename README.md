@@ -176,4 +176,5 @@ Se quiser mensagens de depuracao em chat, descomente as linhas `outputChatBox` n
 
 ## Licenca
 
-Nao ha licenca declarada neste repositorio. Se for publicar no GitHub, recomendo adicionar um arquivo `LICENSE`.
+Este projeto esta licenciado sob a **MIT License**.
+Consulte `LICENSE` para os termos completos.
